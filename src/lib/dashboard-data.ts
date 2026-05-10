@@ -12,8 +12,15 @@ import {
   TrendingUp,
   Zap
 } from "lucide-react";
+import type { Route } from "next";
 
-export const dashboardNavItems = [
+type DashboardNavItem = {
+  label: string;
+  href: Route;
+  icon: typeof BarChart3;
+};
+
+export const dashboardNavItems: DashboardNavItem[] = [
   { label: "Overview", href: "/dashboard", icon: BarChart3 },
   { label: "Listings", href: "/dashboard/listings", icon: Layers3 },
   { label: "Automations", href: "/dashboard/automations", icon: Bot },

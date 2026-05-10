@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Route } from "next";
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
@@ -31,7 +32,7 @@ type ButtonProps = SharedProps & ButtonHTMLAttributes<HTMLButtonElement>;
 
 type ButtonLinkProps = SharedProps &
   AnchorHTMLAttributes<HTMLAnchorElement> & {
-    href: string;
+    href: Route | `#${string}` | `mailto:${string}` | `http${string}`;
   };
 
 const baseClass =
@@ -55,7 +56,13 @@ export function ButtonLink({
   href,
   ...props
 }: ButtonLinkProps) {
+  if (href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("http")) {
+    return <a className={cn(baseClass, variants[variant], sizes[size], className)} href={href} {...props} />;
+  }
+
+  const routeHref = href as Route;
+
   return (
-    <Link className={cn(baseClass, variants[variant], sizes[size], className)} href={href} {...props} />
+    <Link className={cn(baseClass, variants[variant], sizes[size], className)} href={routeHref} {...props} />
   );
 }

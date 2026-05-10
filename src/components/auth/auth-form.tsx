@@ -1,6 +1,7 @@
 "use client";
 
 import { Mail, LockKeyhole, MonitorSmartphone, UserPlus } from "lucide-react";
+import type { Route } from "next";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
@@ -22,10 +23,18 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [name, setName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const redirectTo = searchParams.get("redirectTo") ?? "/dashboard";
+  const redirectTo = getSafeRedirectTo(searchParams.get("redirectTo"));
 
   function getAppUrl() {
     return process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin;
+  }
+
+  function getSafeRedirectTo(value: string | null): Route {
+    if (value?.startsWith("/dashboard")) {
+      return value as Route;
+    }
+
+    return "/dashboard";
   }
 
   async function handleEmailAuth(event: FormEvent<HTMLFormElement>) {
