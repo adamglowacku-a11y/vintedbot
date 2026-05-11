@@ -1,6 +1,7 @@
 import { Bell, Menu, Search } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 
+import { AdminControlPanel } from "@/components/admin/admin-control-panel";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { LanguageCountrySwitcher } from "@/components/layout/language-country-switcher";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ export function DashboardTopbar({ user }: DashboardTopbarProps) {
           Szukaj ofert, automatyzacji i wiadomości...
         </div>
         <div className="ml-auto flex items-center gap-3">
+          <AdminControlPanel user={user} />
           <LanguageCountrySwitcher />
           <Button size="sm" type="button" variant="ghost">
             <Bell className="size-4" />

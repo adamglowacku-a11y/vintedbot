@@ -1,10 +1,9 @@
 import { revalidatePath } from "next/cache";
 import type { User } from "@supabase/supabase-js";
-import { CheckCircle2, LockKeyhole, Shield, ShoppingBag, UsersRound, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronDown, LockKeyhole, Shield, ShoppingBag, UsersRound, XCircle } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { isAdminEmail } from "@/lib/admin-access";
 import { createSupabaseAdminClient, hasSupabaseAdminConfig } from "@/lib/supabase-admin";
 
@@ -26,22 +25,23 @@ export async function AdminControlPanel({ user }: { user: User }) {
   const hasAdminConfig = hasSupabaseAdminConfig();
 
   return (
-    <Card className="mb-6 border-primary/25 bg-primary/[0.04] p-0">
-      <details open>
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 border-b border-white/10 p-5">
-          <div className="flex items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-              <Shield className="size-5" />
-            </span>
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Panel admina</p>
-              <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-white">Zarządzanie dostępem Vintly</h2>
-            </div>
-          </div>
-          <Badge variant="success">Widoczne tylko dla {user.email}</Badge>
-        </summary>
+    <details className="group relative">
+      <summary className="inline-flex h-9 cursor-pointer list-none items-center justify-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 text-sm font-medium text-primary transition hover:bg-primary/20">
+        <Shield className="size-4" />
+        Admin
+        <ChevronDown className="size-4 transition group-open:rotate-180" />
+      </summary>
 
-        <div className="grid gap-4 p-5 xl:grid-cols-[1.2fr_0.8fr]">
+      <div className="absolute right-0 top-12 z-50 w-[min(92vw,980px)] overflow-hidden rounded-[2rem] border border-primary/25 bg-background/95 shadow-2xl shadow-black/40 backdrop-blur-xl">
+        <div className="flex items-center justify-between gap-4 border-b border-white/10 p-5">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Panel admina</p>
+            <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-white">Zarządzanie dostępem Vintly</h2>
+          </div>
+          <Badge variant="success">Tylko {user.email}</Badge>
+        </div>
+
+        <div className="grid max-h-[75vh] gap-4 overflow-y-auto p-5 xl:grid-cols-[1.2fr_0.8fr]">
           <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -134,8 +134,8 @@ export async function AdminControlPanel({ user }: { user: User }) {
             </details>
           </div>
         </div>
-      </details>
-    </Card>
+      </div>
+    </details>
   );
 }
 
