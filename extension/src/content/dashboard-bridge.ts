@@ -1,5 +1,11 @@
-import { DASHBOARD_ORIGINS } from "@/lib/constants";
 import type { ExtensionMessage, ExtensionResponse, ExtensionState, SupabaseSessionSnapshot } from "@/types/extension";
+
+const DASHBOARD_ORIGINS = [
+  "https://vintly.live",
+  "https://www.vintly.live",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000"
+];
 
 type DashboardBridgeMessage =
   | {

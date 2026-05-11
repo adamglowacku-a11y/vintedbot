@@ -1,4 +1,3 @@
-import { DASHBOARD_URL } from "@/lib/constants";
 import type { ExtensionMessage, ExtensionResponse, ExtensionState } from "@/types/extension";
 
 type WidgetController = {
@@ -8,6 +7,7 @@ type WidgetController = {
 
 const WIDGET_ID = "vintedflow-page-widget";
 const PROFILE_PATH_PATTERN = /\/(member|members|profile)\//i;
+const DASHBOARD_CONNECT_URL = "https://vintly.live/extension/connect";
 
 export function mountVintedFlowWidget(controller: WidgetController) {
   if (document.getElementById(WIDGET_ID)) {
@@ -42,7 +42,7 @@ export function mountVintedFlowWidget(controller: WidgetController) {
   });
 
   connect?.addEventListener("click", () => {
-    window.open(`${DASHBOARD_URL}/extension/connect`, "_blank", "noopener,noreferrer");
+    window.open(DASHBOARD_CONNECT_URL, "_blank", "noopener,noreferrer");
   });
 
   window.setInterval(() => {
