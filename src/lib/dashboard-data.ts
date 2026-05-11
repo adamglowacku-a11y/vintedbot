@@ -10,13 +10,14 @@ import {
   ShieldCheck,
   Sparkles,
   TrendingUp,
-  Zap
+  Zap,
+  PlugZap
 } from "lucide-react";
 import type { Route } from "next";
 
 type DashboardNavItem = {
   label: string;
-  href: Route;
+  href: Route | "/extension/connect";
   icon: typeof BarChart3;
 };
 
@@ -26,6 +27,7 @@ export const dashboardNavItems: DashboardNavItem[] = [
   { label: "Automations", href: "/dashboard/automations", icon: Bot },
   { label: "Messages", href: "/dashboard/messages", icon: Inbox },
   { label: "Analytics", href: "/dashboard/analytics", icon: TrendingUp },
+  { label: "Extension", href: "/extension/connect", icon: PlugZap },
   { label: "Settings", href: "/dashboard/settings", icon: Settings }
 ];
 

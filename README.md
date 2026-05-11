@@ -27,6 +27,7 @@ src/
   lib/                 Utilities, Supabase clients, auth helpers, app data
   types/               Shared domain types
 public/                Static assets
+extension/             Chrome Extension MV3 app
 ```
 
 ## Getting Started
@@ -47,3 +48,23 @@ http://localhost:3000/auth/callback
 ```
 
 For production, add the matching Vercel URL callback as well.
+
+## Chrome Extension MVP
+
+The MV3 extension lives in `extension/` and builds to `extension/dist`.
+
+```bash
+npm run extension:build
+```
+
+Load `extension/dist` in Chrome via `chrome://extensions` → Developer mode → Load unpacked.
+
+For local dashboard connection, create extension env variables before building:
+
+```bash
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_DASHBOARD_URL=http://localhost:3000
+```
+
+Production should use `VITE_DASHBOARD_URL=https://vintly.live`. The MVP only detects Vinted pages, syncs auth/session state, logs activity, and prepares safe modules. It does not execute aggressive automation.

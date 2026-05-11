@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { Route } from "next";
 import { usePathname } from "next/navigation";
 
 import { dashboardNavItems } from "@/lib/dashboard-data";
@@ -23,6 +24,7 @@ export function DashboardSidebar() {
       <nav className="flex-1 space-y-1 px-3">
         {dashboardNavItems.map((item) => {
           const isActive = item.href === "/dashboard" ? pathname === item.href : pathname.startsWith(item.href);
+          const href = item.href as Route;
 
           return (
             <Link
@@ -30,7 +32,7 @@ export function DashboardSidebar() {
                 "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm text-muted-foreground transition hover:bg-white/[0.06] hover:text-white",
                 isActive && "bg-white/[0.08] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]"
               )}
-              href={item.href}
+              href={href}
               key={item.href}
             >
               <item.icon className="size-4" />

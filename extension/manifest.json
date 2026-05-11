@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "VintedFlow Seller Automation",
+  "short_name": "VintedFlow",
+  "description": "Secure Vinted seller automation companion connected to the VintedFlow SaaS dashboard.",
+  "version": "0.1.0",
+  "minimum_chrome_version": "116",
+  "action": {
+    "default_title": "VintedFlow",
+    "default_popup": "src/popup/index.html"
+  },
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+  "permissions": ["storage", "tabs", "alarms", "scripting"],
+  "host_permissions": [
+    "https://*.vinted.com/*",
+    "https://*.vinted.pl/*",
+    "https://*.vinted.fr/*",
+    "https://*.vinted.de/*",
+    "https://vintly.live/*",
+    "http://localhost:3000/*",
+    "https://*.supabase.co/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.vinted.com/*",
+        "https://*.vinted.pl/*",
+        "https://*.vinted.fr/*",
+        "https://*.vinted.de/*"
+      ],
+      "js": ["content/vinted.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://vintly.live/*", "http://localhost:3000/*"],
+      "js": ["content/dashboard-bridge.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
