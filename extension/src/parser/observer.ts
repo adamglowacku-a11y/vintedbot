@@ -1,4 +1,3 @@
-import { updateParserDebugOverlay } from "@/parser/debug-overlay";
 import { parseListingsWithDiagnostics } from "@/parser/listing-parser";
 import { SELECTOR_VERSION } from "@/parser/selectors";
 import type { ExtensionLog, ExtensionMessage, ParserHealthState } from "@/types/extension";
@@ -32,8 +31,6 @@ export function startParserObserver({ retryLimit = 4, debounceMs = 650 }: Parser
         selectorVersion: SELECTOR_VERSION,
         logs: [log]
       };
-
-      updateParserDebugOverlay(health);
 
       if (signature === lastSignature && reason !== "manual") {
         return;

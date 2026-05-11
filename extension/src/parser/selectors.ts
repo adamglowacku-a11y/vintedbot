@@ -2,14 +2,19 @@ export const SELECTOR_VERSION = "vinted-card-parser@2";
 
 export const listingCardSelectors = [
   "[data-testid*='item-box']",
+  "[data-testid*='itemBox']",
+  "[data-testid*='item-card']",
   "[data-testid*='grid-item']",
   "[data-testid*='closet-item']",
   "[data-testid*='catalog-item']",
   "[data-testid*='item']",
   "[class*='ItemBox']",
   "[class*='item-box']",
+  "[class*='itemBox']",
+  "[class*='feed-grid__item']",
   "[class*='feed-grid'] [class*='cell']",
   "[class*='web_ui__Cell']",
+  "[class*='web_ui__ItemBox']",
   "article",
   "li",
   "div[class*='feed-grid'] > div",
@@ -48,7 +53,7 @@ export const refreshButtonSelectors = [
 ];
 
 export const statusKeywords = {
-  sold: ["sold", "sprzedane", "verkauft", "vendu"],
-  reserved: ["reserved", "zarezerwowane", "reserviert", "réservé"],
-  hidden: ["hidden", "ukryte", "ausgeblendet", "masqué"]
+  sold: ["sold", "sprzedane", "sprzedano", "verkauft", "vendu", "vendido", "venduto", "verkocht"],
+  reserved: ["reserved", "zarezerwowane", "reserviert", "réservé", "reservado", "riservato", "gereserveerd"],
+  hidden: ["hidden", "ukryte", "ausgeblendet", "masqué", "oculto", "nascosto", "verborgen"]
 };

@@ -9,6 +9,7 @@ import {
 import type { ParsedListingStatus, ParsedVintedListing, ParserHealthState } from "@/types/extension";
 
 const PRICE_PATTERN = /(?<currency>€|zł|PLN|EUR|\$|£)\s?(?<amount>\d+(?:[.,]\d{1,2})?)|(?<amountAfter>\d+(?:[.,]\d{1,2})?)\s?(?<currencyAfter>€|zł|PLN|EUR|\$|£)/i;
+const ITEM_LINK_SELECTOR = "a[href*='/items/'], a[href*='/item/'], a[href*='/catalog/']";
 
 export function parseListingsFromDocument(documentRoot: Document = document) {
   return parseListingsWithDiagnostics(documentRoot).listings;
@@ -64,9 +65,15 @@ function collectListingCandidates(documentRoot: Document) {
     });
   }
 
-  const listingAnchors = Array.from(documentRoot.querySelectorAll<HTMLAnchorElement>("a[href*='/items/'], a[href*='/item/']"));
+  const listingAnchors = Array.from(documentRoot.querySelectorAll<HTMLAnchorElement>(ITEM_LINK_SELECTOR)).filter((anchor) =>
+    isListingUrl(anchor.href)
+  );
   listingAnchors.forEach((anchor) => {
     elements.add(findBestCardContainer(anchor));
+  });
+
+  collectProfileGridImageCandidates(documentRoot).forEach((candidate) => {
+    elements.add(candidate);
   });
 
   const visibleElements = Array.from(elements).filter(isVisibleCandidate);
@@ -80,11 +87,17 @@ function collectListingCandidates(documentRoot: Document) {
   };
 }
 
+function collectProfileGridImageCandidates(documentRoot: Document) {
+  return Array.from(documentRoot.querySelectorAll("img"))
+    .map((image) => findBestCardContainer(image))
+    .filter((candidate) => Boolean(findListingAnchor(candidate)) || looksLikeProfileListingCard(candidate));
+}
+
 function findBestCardContainer(element: Element) {
   const candidates: Element[] = [element];
   let current = element.parentElement;
 
-  for (let depth = 0; depth < 7 && current; depth += 1) {
+  for (let depth = 0; depth < 8 && current; depth += 1) {
     candidates.push(current);
     current = current.parentElement;
   }
@@ -99,12 +112,15 @@ function scoreCardCandidate(element: Element) {
   const rect = element.getBoundingClientRect();
   let score = 0;
 
-  if (element.querySelector("a[href*='/items/'], a[href*='/item/']")) score += 5;
+  if (element instanceof HTMLAnchorElement && isListingUrl(element.href)) score += 7;
+  if (element.querySelector(ITEM_LINK_SELECTOR)) score += 6;
   if (element.querySelector("img")) score += 4;
   if (PRICE_PATTERN.test(text)) score += 3;
+  if (/\b(podbij|bump|boost|push up|remonter|hervorheben)\b/i.test(text)) score += 3;
   if (text.length > 8 && text.length < 900) score += 2;
   if (rect.width >= 80 && rect.height >= 80) score += 2;
-  if (element.matches("[data-testid*='item-box'], [data-testid*='grid-item'], article, li")) score += 3;
+  if (rect.width >= 120 && rect.width <= 420 && rect.height >= 180 && rect.height <= 680) score += 4;
+  if (element.matches("[data-testid*='item-box'], [data-testid*='itemBox'], [data-testid*='grid-item'], [class*='ItemBox'], [class*='item-box'], article, li")) score += 5;
   if (text.length > 1500) score -= 5;
 
   return score;
@@ -132,6 +148,11 @@ function parseListingCard(card: Element): ParsedVintedListing | null {
 
   const title = extractTitle(card, anchor) ?? "Vinted listing";
   const price = extractPrice(card);
+  const status = extractStatus(card);
+
+  if (status === "sold") {
+    return null;
+  }
 
   return {
     id,
@@ -140,7 +161,7 @@ function parseListingCard(card: Element): ParsedVintedListing | null {
     priceValue: price?.value,
     currency: price?.currency,
     url,
-    status: extractStatus(card),
+    status,
     imageUrl: extractImage(card),
     hasRefreshButton: hasRefreshButton(card),
     parsedAt: new Date().toISOString(),
@@ -223,9 +244,14 @@ function extractPrice(card: Element) {
 
 function extractStatus(card: Element): ParsedListingStatus {
   const text = normalizeText(card.textContent)?.toLowerCase() ?? "";
+  const imageLabels = Array.from(card.querySelectorAll("[aria-label], [title], img[alt]"))
+    .map((element) => element.getAttribute("aria-label") ?? element.getAttribute("title") ?? element.getAttribute("alt"))
+    .join(" ")
+    .toLowerCase();
+  const combinedText = `${text} ${imageLabels}`;
 
   for (const [status, keywords] of Object.entries(statusKeywords)) {
-    if (keywords.some((keyword) => text.includes(keyword))) {
+    if (keywords.some((keyword) => combinedText.includes(keyword))) {
       return status as ParsedListingStatus;
     }
   }
@@ -245,6 +271,11 @@ function extractImage(card: Element) {
 
 function hasRefreshButton(card: Element) {
   return refreshButtonSelectors.some((selector) => Boolean(card.querySelector(selector)));
+}
+
+function looksLikeProfileListingCard(card: Element) {
+  const text = normalizeText(card.textContent)?.toLowerCase() ?? "";
+  return Boolean(card.querySelector("img")) && PRICE_PATTERN.test(text) && /\b(podbij|bump|boost|wyświetleń|views|vu|gesehen)\b/i.test(text);
 }
 
 function normalizeText(value?: string | null) {
