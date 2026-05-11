@@ -66,6 +66,18 @@ https://your-preview-domain.vercel.app/auth/callback
 
 Set `NEXT_PUBLIC_APP_URL` to `http://localhost:3000` locally and `https://vintly.live` in production.
 
+## Admin Panel
+
+The dashboard includes a hidden admin panel visible only for `adamglowa2008@gmail.com`. It uses Supabase Auth Admin APIs to list users and grant or revoke access.
+
+Add this server-only variable in `.env.local` and Vercel Environment Variables:
+
+```text
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+```
+
+Find it in Supabase Project Settings -> API -> `service_role`. Do not prefix it with `NEXT_PUBLIC_`, because this key must never be exposed in the browser.
+
 ## Chrome Extension MVP
 
 The MV3 extension lives in `extension/` and builds to `extension/dist`.
