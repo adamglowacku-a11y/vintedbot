@@ -72,10 +72,19 @@ button {
   place-items: center;
   border-radius: 16px;
   background: #2dd4bf;
-  color: #07111f;
+  color: #ffffff;
   font-size: 13px;
   font-weight: 800;
   box-shadow: 0 0 44px rgba(45, 212, 191, 0.25);
+}
+
+.brand-mark {
+  border-radius: 999px;
+}
+
+.brand-mark svg {
+  width: 24px;
+  height: 24px;
 }
 
 .avatar {

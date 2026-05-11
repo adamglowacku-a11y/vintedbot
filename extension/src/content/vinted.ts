@@ -2,6 +2,7 @@ import type { ExtensionMessage, VintedDetectionState } from "@/types/extension";
 import { startParserObserver } from "@/parser/observer";
 import { executeRefreshClick } from "@/content/refresh-executor";
 import type { VintedContentMessage } from "@/types/extension";
+import { mountVintedFlowWidget } from "@/content/vinted-widget";
 
 const VINTED_HOST_PATTERN = /(^|\.)vinted\.(com|pl|fr|de|it|es|nl|be|co\.uk)$/i;
 
@@ -25,6 +26,7 @@ async function publishDetectionState() {
 
 void publishDetectionState();
 const parserObserver = startParserObserver();
+mountVintedFlowWidget(parserObserver);
 
 let lastUrl = window.location.href;
 

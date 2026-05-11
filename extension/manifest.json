@@ -6,14 +6,25 @@
   "version": "0.1.0",
   "minimum_chrome_version": "116",
   "action": {
-    "default_title": "VintedFlow",
-    "default_popup": "src/popup/index.html"
+    "default_title": "VintedFlow"
+  },
+  "side_panel": {
+    "default_path": "src/popup/index.html"
   },
   "background": {
     "service_worker": "background/service-worker.js",
     "type": "module"
   },
-  "permissions": ["storage", "tabs", "alarms", "scripting"],
+  "permissions": ["storage", "tabs", "alarms", "scripting", "sidePanel"],
+  "externally_connectable": {
+    "matches": [
+      "https://vintly.live/*",
+      "https://www.vintly.live/*",
+      "https://*.vercel.app/*",
+      "http://localhost/*",
+      "http://127.0.0.1/*"
+    ]
+  },
   "host_permissions": [
     "https://*.vinted.com/*",
     "https://*.vinted.pl/*",

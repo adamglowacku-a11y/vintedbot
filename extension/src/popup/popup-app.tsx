@@ -127,7 +127,9 @@ export function PopupApp() {
     <main className="popup-shell">
       <section className="hero-card">
         <div className="brand-row">
-          <div className="brand-mark">VF</div>
+          <div className="brand-mark">
+            <LogoMark />
+          </div>
           <div>
             <p className="eyebrow">VintedFlow</p>
             <h1>{t.title}</h1>
@@ -322,5 +324,24 @@ function StatusCard({ label, value, tone }: { label: string; value: string; tone
       <p>{label}</p>
       <span className={tone}>{value}</span>
     </div>
+  );
+}
+
+function LogoMark() {
+  return (
+    <svg aria-hidden="true" fill="none" viewBox="0 0 32 32">
+      <path
+        d="M16 3.5c1.5 6.1 4.4 9 10.5 10.5-6.1 1.5-9 4.4-10.5 10.5C14.5 18.4 11.6 15.5 5.5 14 11.6 12.5 14.5 9.6 16 3.5Z"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="2.7"
+      />
+      <path
+        d="M24.5 4.5c.7 2.8 2.1 4.2 5 5-2.9.8-4.3 2.2-5 5-.8-2.8-2.2-4.2-5-5 2.8-.8 4.2-2.2 5-5Z"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </svg>
   );
 }

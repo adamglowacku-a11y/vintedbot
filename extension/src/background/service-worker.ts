@@ -11,6 +11,9 @@ chrome.runtime.onInstalled.addListener(async () => {
     ...DEFAULT_STATE,
     ...state
   });
+  await chrome.sidePanel?.setPanelBehavior?.({
+    openPanelOnActionClick: true
+  });
   await addLog({ level: "info", message: "VintedFlow extension installed." });
 });
 
@@ -37,7 +40,47 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendRe
   return true;
 });
 
+chrome.runtime.onMessageExternal.addListener((message: ExtensionMessage, sender, sendResponse) => {
+  if (!isAllowedExternalOrigin(sender.origin ?? sender.url)) {
+    sendResponse({
+      ok: false,
+      error: "Origin dashboardu nie jest dozwolony."
+    });
+    return false;
+  }
+
+  handleMessage(message)
+    .then((response) => sendResponse(response))
+    .catch((error: unknown) => {
+      sendResponse({
+        ok: false,
+        error: error instanceof Error ? error.message : "Unknown external extension error."
+      });
+    });
+
+  return true;
+});
+
 let actionTimer: ReturnType<typeof setTimeout> | undefined;
+
+function isAllowedExternalOrigin(value?: string) {
+  if (!value) {
+    return false;
+  }
+
+  try {
+    const url = new URL(value);
+    return (
+      url.hostname === "localhost" ||
+      url.hostname === "127.0.0.1" ||
+      url.hostname === "vintly.live" ||
+      url.hostname === "www.vintly.live" ||
+      url.hostname.endsWith(".vercel.app")
+    );
+  } catch {
+    return false;
+  }
+}
 
 async function handleMessage(message: ExtensionMessage): Promise<ExtensionResponse<ExtensionState>> {
   switch (message.type) {
