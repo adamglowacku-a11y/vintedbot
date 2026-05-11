@@ -2,6 +2,7 @@ import { Bell, Menu, Search } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 
 import { LogoutButton } from "@/components/auth/logout-button";
+import { LanguageCountrySwitcher } from "@/components/layout/language-country-switcher";
 import { Button } from "@/components/ui/button";
 
 type DashboardTopbarProps = {
@@ -9,7 +10,7 @@ type DashboardTopbarProps = {
 };
 
 export function DashboardTopbar({ user }: DashboardTopbarProps) {
-  const displayName = user.user_metadata?.full_name ?? user.email ?? "Seller";
+  const displayName = user.user_metadata?.full_name ?? user.email ?? "Sprzedawca";
   const initials = displayName
     .split(" ")
     .map((part: string) => part[0])
@@ -25,9 +26,10 @@ export function DashboardTopbar({ user }: DashboardTopbarProps) {
         </Button>
         <div className="hidden max-w-md flex-1 items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-muted-foreground md:flex">
           <Search className="size-4" />
-          Search listings, automations, messages...
+          Szukaj ofert, automatyzacji i wiadomości...
         </div>
         <div className="ml-auto flex items-center gap-3">
+          <LanguageCountrySwitcher />
           <Button size="sm" type="button" variant="ghost">
             <Bell className="size-4" />
           </Button>

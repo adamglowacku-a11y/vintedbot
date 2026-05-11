@@ -22,93 +22,93 @@ type DashboardNavItem = {
 };
 
 export const dashboardNavItems: DashboardNavItem[] = [
-  { label: "Overview", href: "/dashboard", icon: BarChart3 },
-  { label: "Listings", href: "/dashboard/listings", icon: Layers3 },
-  { label: "Automations", href: "/dashboard/automations", icon: Bot },
-  { label: "Messages", href: "/dashboard/messages", icon: Inbox },
-  { label: "Analytics", href: "/dashboard/analytics", icon: TrendingUp },
-  { label: "Extension", href: "/extension/connect", icon: PlugZap },
-  { label: "Settings", href: "/dashboard/settings", icon: Settings }
+  { label: "Przegląd", href: "/dashboard", icon: BarChart3 },
+  { label: "Oferty", href: "/dashboard/listings", icon: Layers3 },
+  { label: "Automatyzacje", href: "/dashboard/automations", icon: Bot },
+  { label: "Wiadomości", href: "/dashboard/messages", icon: Inbox },
+  { label: "Analityka", href: "/dashboard/analytics", icon: TrendingUp },
+  { label: "Rozszerzenie", href: "/extension/connect", icon: PlugZap },
+  { label: "Ustawienia", href: "/dashboard/settings", icon: Settings }
 ];
 
 export const overviewCards = [
-  { label: "Revenue tracked", value: "€8,420", delta: "+21.4%", icon: TrendingUp },
-  { label: "Active listings", value: "486", delta: "+38 this week", icon: Layers3 },
-  { label: "Automations run", value: "1,284", delta: "99.1% healthy", icon: Zap },
-  { label: "Replies assisted", value: "742", delta: "48 sec avg.", icon: Inbox }
+  { label: "Przychód demo", value: "8 420 zł", delta: "+21,4%", icon: TrendingUp },
+  { label: "Aktywne oferty", value: "486", delta: "+38 w tym tygodniu", icon: Layers3 },
+  { label: "Uruchomione akcje", value: "1 284", delta: "99,1% poprawnie", icon: Zap },
+  { label: "Wsparte odpowiedzi", value: "742", delta: "średnio 48 s", icon: Inbox }
 ];
 
 export const recentActions = [
-  "Refreshed 36 premium listings",
-  "Queued weekend discount campaign",
-  "Paused automation after low stock warning",
-  "Synced extension settings from Chrome"
+  "Odświeżono 36 przykładowych ofert premium",
+  "Dodano kampanię rabatową na weekend do kolejki",
+  "Wstrzymano automatyzację po ostrzeżeniu o limicie",
+  "Zsynchronizowano ustawienia rozszerzenia z Chrome"
 ];
 
 export const automationActivity = [
-  { title: "Auto refresh completed", detail: "Coats and knitwear collection", time: "2 min ago", icon: RefreshCw },
-  { title: "Safety limit reached", detail: "Offer automation paused for 30 min", time: "18 min ago", icon: ShieldCheck },
-  { title: "Descriptions optimized", detail: "14 listings improved", time: "41 min ago", icon: Sparkles },
-  { title: "Order flow updated", detail: "Sold items removed from queue", time: "1 hr ago", icon: PackageCheck }
+  { title: "Odświeżanie zakończone", detail: "Kolekcja płaszczy i dzianin", time: "2 min temu", icon: RefreshCw },
+  { title: "Osiągnięto limit bezpieczeństwa", detail: "Automatyzacja ofert wstrzymana na 30 min", time: "18 min temu", icon: ShieldCheck },
+  { title: "Opisy zoptymalizowane", detail: "Ulepszono 14 ofert", time: "41 min temu", icon: Sparkles },
+  { title: "Kolejka zaktualizowana", detail: "Usunięto sprzedane oferty z kolejki", time: "1 godz. temu", icon: PackageCheck }
 ];
 
 export const listings = [
-  { name: "Wool coat - beige", sku: "VNT-2041", price: "€72", views: 1240, saves: 86, status: "Active" },
-  { name: "Nike vintage hoodie", sku: "VNT-1988", price: "€38", views: 820, saves: 44, status: "Boosted" },
-  { name: "Leather ankle boots", sku: "VNT-1870", price: "€54", views: 612, saves: 31, status: "Needs refresh" },
-  { name: "Zara blazer set", sku: "VNT-1792", price: "€49", views: 944, saves: 63, status: "Queued" },
-  { name: "Cashmere scarf", sku: "VNT-1665", price: "€29", views: 402, saves: 18, status: "Draft" }
+  { name: "Płaszcz wełniany beżowy", sku: "VNT-2041", price: "72 zł", views: 1240, saves: 86, status: "Aktywna" },
+  { name: "Bluza Nike vintage", sku: "VNT-1988", price: "38 zł", views: 820, saves: 44, status: "Podbita" },
+  { name: "Skórzane botki", sku: "VNT-1870", price: "54 zł", views: 612, saves: 31, status: "Do odświeżenia" },
+  { name: "Komplet marynarka Zara", sku: "VNT-1792", price: "49 zł", views: 944, saves: 63, status: "W kolejce" },
+  { name: "Szalik kaszmirowy", sku: "VNT-1665", price: "29 zł", views: 402, saves: 18, status: "Szkic" }
 ];
 
 export const automationQueues = [
-  { name: "Refresh queue", count: 128, status: "Running", window: "Every 45-75 min" },
-  { name: "Offer queue", count: 44, status: "Cooling down", window: "Max 18 / hour" },
-  { name: "Description queue", count: 19, status: "Scheduled", window: "Tonight 22:00" }
+  { name: "Kolejka odświeżania", count: 128, status: "Działa", window: "Co 45-75 min" },
+  { name: "Kolejka ofert", count: 44, status: "Cooldown", window: "Maks. 18 / godz." },
+  { name: "Kolejka opisów", count: 19, status: "Zaplanowana", window: "Dzisiaj 22:00" }
 ];
 
 export const messageTemplates = [
-  { name: "Bundle offer follow-up", usage: "284 uses", cooldown: "30 min", enabled: true },
-  { name: "Shipping confirmation", usage: "191 uses", cooldown: "10 min", enabled: true },
-  { name: "Price negotiation guardrail", usage: "88 uses", cooldown: "45 min", enabled: false }
+  { name: "Follow-up po ofercie zestawu", usage: "284 użycia", cooldown: "30 min", enabled: true },
+  { name: "Potwierdzenie wysyłki", usage: "191 użyć", cooldown: "10 min", enabled: true },
+  { name: "Ochrona negocjacji ceny", usage: "88 użyć", cooldown: "45 min", enabled: false }
 ];
 
 export const analyticsSegments = [
-  { label: "Conversion rate", value: "8.7%", detail: "+1.9% vs last month" },
-  { label: "Avg. order value", value: "€41.20", detail: "+€6.40 vs last month" },
-  { label: "Automation lift", value: "24.8%", detail: "Revenue attributed to workflows" },
-  { label: "Response SLA", value: "94%", detail: "Replies within 2 minutes" }
+  { label: "Konwersja", value: "8,7%", detail: "+1,9% vs poprzedni miesiąc" },
+  { label: "Średnia wartość zamówienia", value: "41,20 zł", detail: "+6,40 zł vs poprzedni miesiąc" },
+  { label: "Wpływ automatyzacji", value: "24,8%", detail: "Przychód demo przypisany workflow" },
+  { label: "Szybkość odpowiedzi", value: "94%", detail: "Odpowiedzi w ciągu 2 minut" }
 ];
 
 export const quickActions = [
-  { label: "Connect extension", icon: PackageCheck },
-  { label: "Create refresh rule", icon: RefreshCw },
-  { label: "Add message template", icon: Inbox },
-  { label: "Review safety limits", icon: ShieldCheck }
+  { label: "Połącz rozszerzenie", icon: PackageCheck },
+  { label: "Utwórz regułę odświeżania", icon: RefreshCw },
+  { label: "Dodaj szablon wiadomości", icon: Inbox },
+  { label: "Sprawdź limity bezpieczeństwa", icon: ShieldCheck }
 ];
 
 export const scheduleOptions = [
-  { label: "Quiet hours", value: "23:00 - 07:00" },
-  { label: "Refresh delay", value: "45-75 minutes" },
-  { label: "Daily action cap", value: "320 actions" },
-  { label: "Offer cooldown", value: "30 minutes" }
+  { label: "Godziny ciszy", value: "23:00 - 07:00" },
+  { label: "Opóźnienie odświeżania", value: "45-75 minut" },
+  { label: "Dzienny limit akcji", value: "320 akcji" },
+  { label: "Cooldown ofert", value: "30 minut" }
 ];
 
 export const settingsGroups = [
   {
-    title: "Account",
-    items: ["Workspace name", "Seller profile", "Notification email", "Team access"]
+    title: "Konto",
+    items: ["Nazwa workspace", "Profil sprzedawcy", "Email powiadomień", "Dostęp zespołu"]
   },
   {
-    title: "Subscription",
-    items: ["Growth plan", "Billing portal", "Usage limits", "Invoice history"]
+    title: "Subskrypcja",
+    items: ["Plan Growth", "Panel płatności", "Limity użycia", "Historia faktur"]
   },
   {
-    title: "Extension sync",
-    items: ["Chrome extension pairing", "Session health", "Listing sync frequency", "Local cache reset"]
+    title: "Synchronizacja rozszerzenia",
+    items: ["Parowanie rozszerzenia Chrome", "Stan sesji", "Częstotliwość synchronizacji ofert", "Reset lokalnego cache"]
   },
   {
-    title: "API and security",
-    items: ["API keys", "OAuth providers", "Webhook secrets", "Audit logs"]
+    title: "API i bezpieczeństwo",
+    items: ["Klucze API", "Dostawcy OAuth", "Sekrety webhooków", "Logi audytu"]
   }
 ];
 
@@ -118,12 +118,12 @@ export const extensionStatus = {
   connected: true,
   browser: "Chrome",
   version: "0.8.2",
-  lastSync: "18 seconds ago",
-  activeTab: "Vinted wardrobe"
+  lastSync: "18 sekund temu",
+  activeTab: "Profil Vinted"
 };
 
 export const syncTimeline = [
-  { label: "Extension heartbeat", value: "Healthy", icon: Clock3 },
-  { label: "Supabase realtime", value: "Subscribed", icon: Zap },
-  { label: "Queue worker", value: "Ready", icon: Bot }
+  { label: "Heartbeat rozszerzenia", value: "Zdrowy", icon: Clock3 },
+  { label: "Supabase realtime", value: "Subskrybuje", icon: Zap },
+  { label: "Worker kolejki", value: "Gotowy", icon: Bot }
 ];

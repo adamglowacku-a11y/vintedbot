@@ -43,9 +43,9 @@ export function DashboardSidebar() {
       </nav>
       <div className="p-4">
         <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4">
-          <p className="text-sm font-medium text-white">Chrome extension</p>
+          <p className="text-sm font-medium text-white">Rozszerzenie Chrome</p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Prepare pairing keys and realtime events for extension integration.
+            Połącz sesję dashboardu z rozszerzeniem i synchronizuj oferty z Vinted.
           </p>
         </div>
       </div>

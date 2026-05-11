@@ -18,10 +18,10 @@ export default function DashboardOverviewPage() {
   return (
     <>
       <PageHeader
-        action={<Button type="button">Create automation</Button>}
-        description="Monitor extension health, automation results, recent queue activity, and seller workflow shortcuts."
+        action={<Button type="button">Utwórz automatyzację</Button>}
+        description="Monitoruj stan rozszerzenia, wyniki akcji, kolejkę i skróty pracy sprzedawcy. Sekcje finansowe są danymi demo, dopóki nie podłączysz realnych zdarzeń."
         eyebrow="Dashboard"
-        title="Overview"
+        title="Przegląd"
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -30,23 +30,31 @@ export default function DashboardOverviewPage() {
         ))}
       </div>
 
+      <Card className="mt-4 border-primary/20 bg-primary/5 p-4">
+        <p className="text-sm leading-6 text-muted-foreground">
+          Źródło danych: liczba wykrytych ofert i stan parsera pochodzą z rozszerzenia Chrome oraz DOM Vinted. Karty
+          przychodów, analityki i przykładowy katalog są danymi demo, dopóki nie zostaną podłączone realne zdarzenia
+          sprzedaży z backendu/Supabase.
+        </p>
+      </Card>
+
       <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_0.85fr]">
         <Card className="p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Extension connection</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Prepared for Chrome extension pairing and realtime sync.</p>
+              <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Połączenie rozszerzenia</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Stan sesji Chrome, parsera i synchronizacji z dashboardem.</p>
             </div>
             <Badge variant={extensionStatus.connected ? "success" : "warning"}>
-              {extensionStatus.connected ? "Connected" : "Disconnected"}
+              {extensionStatus.connected ? "Połączono" : "Rozłączono"}
             </Badge>
           </div>
           <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {Object.entries({
-              Browser: extensionStatus.browser,
-              Version: extensionStatus.version,
-              "Last sync": extensionStatus.lastSync,
-              "Active tab": extensionStatus.activeTab
+              Przeglądarka: extensionStatus.browser,
+              Wersja: extensionStatus.version,
+              "Ostatnia synchronizacja": extensionStatus.lastSync,
+              "Aktywna karta": extensionStatus.activeTab
             }).map(([label, value]) => (
               <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" key={label}>
                 <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
@@ -70,7 +78,7 @@ export default function DashboardOverviewPage() {
         </Card>
 
         <Card className="p-5">
-          <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Quick actions</h2>
+          <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Szybkie akcje</h2>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
             {quickActions.map((action) => (
               <button
@@ -91,7 +99,7 @@ export default function DashboardOverviewPage() {
 
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
         <Card className="p-5">
-          <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Automation activity</h2>
+          <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Aktywność automatyzacji</h2>
           <div className="mt-5 space-y-3">
             {automationActivity.map((item) => (
               <div className="flex gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4" key={item.title}>
@@ -109,7 +117,7 @@ export default function DashboardOverviewPage() {
         </Card>
 
         <Card className="p-5">
-          <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Recent actions</h2>
+          <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Ostatnie akcje</h2>
           <div className="mt-5 space-y-3">
             {recentActions.map((action) => (
               <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4" key={action}>

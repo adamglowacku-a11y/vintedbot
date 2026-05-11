@@ -12,18 +12,18 @@ export function CTA() {
             <MonitorSmartphone className="size-6" />
           </div>
           <h2 className="text-balance text-4xl font-semibold tracking-[-0.055em] text-white sm:text-5xl">
-            Launch your Vinted automation stack with a dashboard sellers actually enjoy using.
+            Uruchom automatyzację Vinted z dashboardem, którego naprawdę chce się używać.
           </h2>
           <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-muted-foreground">
-            Start with the homepage and design system, then connect Supabase auth, extension events, billing, and seller workflows.
+            Połącz Supabase Auth, zdarzenia rozszerzenia, płatności i workflow sprzedawcy w jednym produkcie SaaS.
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <ButtonLink href="/register" size="lg">
-              Start building
+              Zacznij budować
               <ArrowRight className="size-4" />
             </ButtonLink>
             <ButtonLink href="#features" size="lg" variant="secondary">
-              Explore features
+              Poznaj funkcje
             </ButtonLink>
           </div>
         </div>

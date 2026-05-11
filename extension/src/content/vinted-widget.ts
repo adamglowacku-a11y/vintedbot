@@ -1,7 +1,15 @@
 import type { ExtensionMessage, ExtensionResponse, ExtensionState } from "@/types/extension";
 
+type WidgetScanResult = {
+  listings: Array<unknown>;
+  health: {
+    status: string;
+    listingsFound: number;
+  };
+};
+
 type WidgetController = {
-  scanNow: () => void;
+  scanNow: () => Promise<WidgetScanResult | void> | WidgetScanResult | void;
   schedule: (reason: string) => void;
 };
 
@@ -28,7 +36,7 @@ export function mountVintedFlowWidget(controller: WidgetController) {
 
   launcher?.addEventListener("click", () => {
     panel?.classList.toggle("is-open");
-    void refreshWidgetState(root);
+    void scanAndRefresh(root, controller, "launcher");
   });
 
   close?.addEventListener("click", () => {
@@ -36,9 +44,7 @@ export function mountVintedFlowWidget(controller: WidgetController) {
   });
 
   scan?.addEventListener("click", () => {
-    controller.scanNow();
-    controller.schedule("widget-manual-scan");
-    window.setTimeout(() => void refreshWidgetState(root), 900);
+    void scanAndRefresh(root, controller, "manual");
   });
 
   connect?.addEventListener("click", () => {
@@ -47,26 +53,52 @@ export function mountVintedFlowWidget(controller: WidgetController) {
 
   window.setInterval(() => {
     updateVisibility(root);
-    void refreshWidgetState(root);
+    void scanAndRefresh(root, controller, "interval");
   }, 3500);
 
   updateVisibility(root);
-  void refreshWidgetState(root);
+  void scanAndRefresh(root, controller, "initial");
 }
 
 function updateVisibility(root: HTMLElement) {
   root.dataset.visible = PROFILE_PATH_PATTERN.test(window.location.pathname) ? "true" : "false";
 }
 
+async function scanAndRefresh(root: HTMLElement, controller: WidgetController, reason: string) {
+  setText(root, "vf-parser", "Skanuję...");
+  setText(root, "vf-error", "");
+
+  const scanResult = await Promise.resolve(controller.scanNow());
+
+  if (scanResult?.health) {
+    setText(root, "vf-listings", String(scanResult.health.listingsFound ?? scanResult.listings.length));
+    setText(root, "vf-parser", scanResult.health.status);
+  }
+
+  if (reason !== "manual") {
+    controller.schedule(`widget-${reason}`);
+  }
+
+  await refreshWidgetState(root);
+}
+
 async function refreshWidgetState(root: HTMLElement) {
   const response = await sendWidgetMessage({ type: "GET_STATE" });
   const state = response.data;
+
+  if (!response.ok) {
+    setText(root, "vf-status", "Błąd");
+    setText(root, "vf-sync", "offline");
+    setText(root, "vf-error", response.error ?? "Nie udało się odczytać stanu rozszerzenia.");
+    return;
+  }
 
   setText(root, "vf-status", state?.isConnected ? "Połączono" : "Nie połączono");
   setText(root, "vf-listings", String(state?.parsedListings.length ?? 0));
   setText(root, "vf-parser", state?.parserHealth.status ?? "idle");
   setText(root, "vf-vinted", state?.vinted.isOnVinted ? "Wykryto" : "Oczekuje");
   setText(root, "vf-sync", state?.sync.status ?? "idle");
+  setText(root, "vf-error", "");
 }
 
 function setText(root: HTMLElement, key: string, value: string) {
@@ -125,6 +157,7 @@ function createWidgetMarkup() {
         <button data-vf-connect type="button">Połącz dashboard</button>
       </div>
       <p class="vf-sync">Sync: <strong data-vf-sync>idle</strong></p>
+      <p class="vf-error" data-vf-error></p>
     </section>
   `;
 }
@@ -167,6 +200,7 @@ function injectWidgetStyles() {
     #${WIDGET_ID} .vf-actions button { min-height: 36px; border: 1px solid rgba(45,212,191,.22); border-radius: 999px; background: rgba(45,212,191,.12); color: #5eead4; cursor: pointer; font-size: 12px; font-weight: 800; }
     #${WIDGET_ID} .vf-actions button:first-child { background: #2dd4bf; color: #07111f; }
     #${WIDGET_ID} .vf-sync { margin-top: 10px; color: #64748b; font-size: 11px; }
+    #${WIDGET_ID} .vf-error { min-height: 14px; margin-top: 8px; color: #fca5a5; font-size: 11px; line-height: 1.4; }
   `;
   document.documentElement.appendChild(style);
 }

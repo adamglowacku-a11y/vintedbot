@@ -28,15 +28,15 @@ export function Navbar() {
 
         <div className="hidden items-center gap-2 md:flex">
           <ButtonLink href="/login" size="sm" variant="ghost">
-            Sign in
+            Zaloguj się
           </ButtonLink>
           <ButtonLink href="/register" size="sm">
-            Get started
+            Zacznij
           </ButtonLink>
         </div>
 
         <button
-          aria-label="Open menu"
+          aria-label="Otwórz menu"
           className="flex size-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-white md:hidden"
           type="button"
         >

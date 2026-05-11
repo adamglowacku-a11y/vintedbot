@@ -7,10 +7,10 @@ export function Features() {
     <section className="px-4 py-section-sm sm:py-section" id="features">
       <div className="mx-auto max-w-7xl">
         <div className="max-w-3xl">
-          <SectionEyebrow>Automation toolkit</SectionEyebrow>
-          <SectionTitle>Everything sellers need to move faster without losing control.</SectionTitle>
+          <SectionEyebrow>Zestaw automatyzacji</SectionEyebrow>
+          <SectionTitle>Wszystko, czego sprzedawca potrzebuje, aby działać szybciej i bezpiecznie.</SectionTitle>
           <SectionLead>
-            Connect your browser session, configure seller-safe workflows, and manage every automation from one modern dashboard.
+            Połącz sesję przeglądarki, ustaw bezpieczne workflow i zarządzaj automatyzacją z jednego dashboardu.
           </SectionLead>
         </div>
         <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3">

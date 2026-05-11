@@ -11,10 +11,10 @@ export function Pricing() {
     <section className="px-4 py-section-sm sm:py-section" id="pricing">
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto max-w-3xl text-center">
-          <SectionEyebrow>Pricing</SectionEyebrow>
-          <SectionTitle>Simple plans for sellers growing from side hustle to studio.</SectionTitle>
+          <SectionEyebrow>Cennik</SectionEyebrow>
+          <SectionTitle>Proste plany dla sprzedawców rozwijających sprzedaż na Vinted.</SectionTitle>
           <SectionLead className="mx-auto">
-            Start lean, then unlock advanced automations when your catalog and message volume grow.
+            Zacznij spokojnie, a zaawansowane automatyzacje odblokuj, gdy urośnie katalog i liczba wiadomości.
           </SectionLead>
         </div>
         <div className="mt-12 grid gap-4 lg:grid-cols-3">
@@ -28,7 +28,7 @@ export function Pricing() {
             >
               {plan.featured ? (
                 <div className="absolute right-5 top-5 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
-                  Most popular
+                  Najpopularniejszy
                 </div>
               ) : null}
               <div>
@@ -36,7 +36,7 @@ export function Pricing() {
                 <p className="mt-3 text-sm leading-6 text-muted-foreground">{plan.description}</p>
                 <div className="mt-8 flex items-end gap-2">
                   <span className="text-5xl font-semibold tracking-[-0.06em] text-white">{plan.price}</span>
-                  <span className="pb-2 text-sm text-muted-foreground">/mo</span>
+                  <span className="pb-2 text-sm text-muted-foreground">/ mies.</span>
                 </div>
               </div>
               <ul className="mt-8 space-y-3">

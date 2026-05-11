@@ -8,11 +8,11 @@ import { Card } from "@/components/ui/card";
 import { listings } from "@/lib/dashboard-data";
 
 function getBadgeVariant(status: string) {
-  if (status === "Active" || status === "Boosted") {
+  if (status === "Aktywna" || status === "Podbita") {
     return "success";
   }
 
-  if (status === "Needs refresh") {
+  if (status === "Do odświeżenia") {
     return "warning";
   }
 

@@ -33,8 +33,8 @@ export default function Home() {
           <div className="mt-8 grid gap-3 sm:grid-cols-3">
             {[
               { label: "Dashboard SaaS", icon: Sparkles },
-              { label: "Chrome extension", icon: ShieldCheck },
-              { label: "Automations", icon: Bot }
+              { label: "Rozszerzenie Chrome", icon: ShieldCheck },
+              { label: "Automatyzacje", icon: Bot }
             ].map((item) => (
               <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" key={item.label}>
                 <item.icon className="mx-auto size-5 text-primary" />

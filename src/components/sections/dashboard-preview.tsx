@@ -10,10 +10,10 @@ export function DashboardPreview() {
     <section className="px-4 py-section-sm sm:py-section" id="preview">
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto max-w-3xl text-center">
-          <SectionEyebrow>Dashboard preview</SectionEyebrow>
-          <SectionTitle>Designed like a cockpit for high-volume Vinted sellers.</SectionTitle>
+          <SectionEyebrow>Podgląd dashboardu</SectionEyebrow>
+          <SectionTitle>Zaprojektowany jak centrum dowodzenia dla sprzedawców Vinted.</SectionTitle>
           <SectionLead className="mx-auto">
-            Track workflows, revenue, buyer conversations, and listing health with a clean interface built for daily operations.
+            Śledź workflow, przychody demo, rozmowy z kupującymi i stan ofert w przejrzystym interfejsie.
           </SectionLead>
         </div>
 
@@ -22,15 +22,15 @@ export function DashboardPreview() {
             <div className="hidden lg:block">
               <Sidebar
                 items={[
-                  { label: "Overview", icon: <BarChart3 className="size-4" />, active: true },
-                  { label: "Listings", icon: <ShoppingBag className="size-4" /> },
+                  { label: "Przegląd", icon: <BarChart3 className="size-4" />, active: true },
+                  { label: "Oferty", icon: <ShoppingBag className="size-4" /> },
                   { label: "Inbox", icon: <Inbox className="size-4" /> },
-                  { label: "Workflows", icon: <Settings2 className="size-4" /> }
+                  { label: "Workflow", icon: <Settings2 className="size-4" /> }
                 ]}
                 footer={
                   <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-muted-foreground">
-                    <p className="font-medium text-white">Extension online</p>
-                    <p className="mt-1">Last sync 18 seconds ago</p>
+                    <p className="font-medium text-white">Rozszerzenie online</p>
+                    <p className="mt-1">Ostatnia synchronizacja 18 sekund temu</p>
                   </div>
                 }
               />
@@ -60,8 +60,8 @@ export function DashboardPreview() {
                 <Card className="min-h-[320px] p-5">
                   <div className="mb-8 flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">Revenue and saves</p>
-                      <h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-white">Automation lift</h3>
+                      <p className="text-sm text-muted-foreground">Przychód demo i zapisania</p>
+                      <h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-white">Wpływ automatyzacji</h3>
                     </div>
                     <span className="rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">+24.8%</span>
                   </div>
@@ -79,7 +79,7 @@ export function DashboardPreview() {
                 </Card>
 
                 <Card className="p-5">
-                  <h3 className="text-xl font-semibold tracking-[-0.03em] text-white">Live activity</h3>
+                  <h3 className="text-xl font-semibold tracking-[-0.03em] text-white">Aktywność live</h3>
                   <div className="mt-6 space-y-3">
                     {activity.map((item) => (
                       <div className="flex gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3" key={item.title}>

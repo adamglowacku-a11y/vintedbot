@@ -17,114 +17,114 @@ import {
 export const siteConfig = {
   name: "VintedFlow",
   description:
-    "Premium automation suite for Vinted sellers with a Chrome extension, live dashboard, and Supabase-backed workflow engine.",
+    "Premium suite do bezpiecznej automatyzacji sprzedaży na Vinted z rozszerzeniem Chrome, dashboardem i Supabase.",
   url: "https://vintedflow.vercel.app"
 };
 
 export const navItems = [
-  { label: "Features", href: "#features" },
-  { label: "Preview", href: "#preview" },
-  { label: "Pricing", href: "#pricing" },
+  { label: "Funkcje", href: "#features" },
+  { label: "Podgląd", href: "#preview" },
+  { label: "Cennik", href: "#pricing" },
   { label: "FAQ", href: "#faq" }
 ];
 
 export const stats = [
-  { label: "Listings optimized", value: "2.4M+" },
-  { label: "Avg. response time", value: "42s" },
-  { label: "Seller hours saved", value: "18k" }
+  { label: "Zoptymalizowane oferty", value: "2,4M+" },
+  { label: "Średni czas odpowiedzi", value: "42 s" },
+  { label: "Oszczędzone godziny", value: "18 tys." }
 ];
 
 export const features = [
   {
-    title: "Smart Listing Automation",
-    description: "Bulk relist, refresh, and optimize product titles with timing rules that match buyer activity.",
+    title: "Inteligentna automatyzacja ofert",
+    description: "Odświeżaj i optymalizuj oferty z limitami czasu dopasowanymi do aktywności kupujących.",
     icon: Bot
   },
   {
-    title: "Offer Intelligence",
-    description: "Detect high-intent buyers, auto-suggest discounts, and protect minimum margins.",
+    title: "Analiza ofert",
+    description: "Wykrywaj zainteresowanych kupujących, sugeruj rabaty i chroń minimalną marżę.",
     icon: Sparkles
   },
   {
-    title: "Inbox Assistant",
-    description: "Reply faster with reusable snippets, AI-assisted answers, and buyer context from the dashboard.",
+    title: "Asystent wiadomości",
+    description: "Odpowiadaj szybciej dzięki szablonom, kontekstowi kupującego i bezpiecznym limitom.",
     icon: MessageSquareText
   },
   {
-    title: "Inventory Sync",
-    description: "Track listing states, reserved items, sold items, and stale stock across every browser session.",
+    title: "Synchronizacja asortymentu",
+    description: "Śledź aktywne, zarezerwowane, sprzedane i nieaktualne oferty w sesjach przeglądarki.",
     icon: Boxes
   },
   {
-    title: "Performance Analytics",
-    description: "See conversion, revenue, saves, views, and automation impact in a clean seller cockpit.",
+    title: "Analityka sprzedaży",
+    description: "Sprawdzaj konwersję, przychód, zapisania, wyświetlenia i wpływ automatyzacji.",
     icon: ChartNoAxesCombined
   },
   {
-    title: "Secure Extension Bridge",
-    description: "Connect the Chrome extension to Supabase auth with scoped sessions and encrypted tokens.",
+    title: "Bezpieczny bridge rozszerzenia",
+    description: "Łącz rozszerzenie Chrome z Supabase Auth przez kontrolowaną sesję dashboardu.",
     icon: ShieldCheck
   }
 ];
 
 export const dashboardMetrics = [
-  { label: "Revenue this week", value: "€4,280", delta: "+18.4%", icon: CreditCard },
-  { label: "Active automations", value: "27", delta: "+6 today", icon: Zap },
-  { label: "Avg. listing score", value: "92%", delta: "+11 pts", icon: Gauge },
-  { label: "Orders processed", value: "184", delta: "+32%", icon: PackageCheck }
+  { label: "Przychód w tygodniu", value: "4 280 zł", delta: "+18,4%", icon: CreditCard },
+  { label: "Aktywne automatyzacje", value: "27", delta: "+6 dzisiaj", icon: Zap },
+  { label: "Średni wynik oferty", value: "92%", delta: "+11 pkt", icon: Gauge },
+  { label: "Obsłużone zamówienia", value: "184", delta: "+32%", icon: PackageCheck }
 ];
 
 export const activity = [
-  { title: "Auto-refreshed winter coats collection", time: "2 min ago", icon: Clock3 },
-  { title: "Sent bundled offer to Marta K.", time: "8 min ago", icon: ArrowUpRight },
-  { title: "Detected low-margin counteroffer", time: "12 min ago", icon: BellRing },
-  { title: "Optimized 14 listing descriptions", time: "24 min ago", icon: Sparkles }
+  { title: "Odświeżono kolekcję płaszczy zimowych", time: "2 min temu", icon: Clock3 },
+  { title: "Wysłano propozycję zestawu do Marta K.", time: "8 min temu", icon: ArrowUpRight },
+  { title: "Wykryto kontrofertę z niską marżą", time: "12 min temu", icon: BellRing },
+  { title: "Zoptymalizowano 14 opisów ofert", time: "24 min temu", icon: Sparkles }
 ];
 
 export const pricingPlans = [
   {
-    name: "Starter",
-    price: "€19",
-    description: "For solo sellers automating core listing workflows.",
-    features: ["150 active listings", "Chrome extension", "Basic analytics", "Email support"],
-    cta: "Start free"
+    name: "Start",
+    price: "19 zł",
+    description: "Dla pojedynczych sprzedawców automatyzujących podstawowe procesy.",
+    features: ["150 aktywnych ofert", "Rozszerzenie Chrome", "Podstawowa analityka", "Wsparcie email"],
+    cta: "Zacznij za darmo"
   },
   {
     name: "Growth",
-    price: "€49",
-    description: "For sellers scaling daily operations and buyer messaging.",
-    features: ["Unlimited active listings", "Offer intelligence", "Inbox assistant", "Advanced analytics"],
-    cta: "Try Growth",
+    price: "49 zł",
+    description: "Dla sprzedawców rozwijających codzienną sprzedaż i wiadomości.",
+    features: ["Nielimitowane aktywne oferty", "Analiza ofert", "Asystent wiadomości", "Zaawansowana analityka"],
+    cta: "Wypróbuj Growth",
     featured: true
   },
   {
     name: "Studio",
-    price: "€119",
-    description: "For teams managing multiple wardrobes and seller accounts.",
-    features: ["Multi-account dashboard", "Team permissions", "Priority support", "Custom workflows"],
-    cta: "Contact sales"
+    price: "119 zł",
+    description: "Dla zespołów obsługujących wiele profili i kont sprzedawców.",
+    features: ["Dashboard wielu kont", "Uprawnienia zespołu", "Priorytetowe wsparcie", "Własne workflow"],
+    cta: "Kontakt"
   }
 ];
 
 export const faqs = [
   {
-    question: "How does the Chrome extension connect to the dashboard?",
+    question: "Jak rozszerzenie Chrome łączy się z dashboardem?",
     answer:
-      "The extension authenticates through Supabase and sends listing, activity, and workflow events to the dashboard in real time."
+      "Rozszerzenie korzysta z sesji Supabase przekazanej przez dashboard i synchronizuje stan ofert oraz akcji."
   },
   {
-    question: "Can I control automation limits?",
+    question: "Czy mogę kontrolować limity automatyzacji?",
     answer:
-      "Yes. Every workflow has rate limits, quiet hours, margin rules, and manual approval settings so sellers stay in control."
+      "Tak. Każdy workflow ma limity częstotliwości, godziny ciszy, zasady marży i opcjonalną akceptację ręczną."
   },
   {
-    question: "Is this ready for Vercel deployment?",
+    question: "Czy projekt jest gotowy pod Vercel?",
     answer:
-      "The architecture is built for Vercel with environment-based Supabase configuration and clean Next.js app routing."
+      "Architektura jest przygotowana pod Vercel, Supabase i routing Next.js App Router."
   },
   {
-    question: "What data is stored?",
+    question: "Jakie dane są zapisywane?",
     answer:
-      "Only seller-approved operational data such as listing metadata, workflow activity, analytics, and account preferences."
+      "Tylko dane operacyjne zaakceptowane przez sprzedawcę: metadane ofert, aktywność workflow, analityka i ustawienia konta."
   }
 ];

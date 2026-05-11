@@ -9,14 +9,14 @@ export default function RegisterPage() {
     <AuthShell
       footer={
         <>
-          Already have an account?{" "}
+          Masz już konto?{" "}
           <Link className="font-medium text-primary hover:text-primary/80" href="/login">
-            Sign in
+            Zaloguj się
           </Link>
         </>
       }
-      subtitle="Create your seller workspace and connect the Chrome extension when you are ready."
-      title="Start your automation workspace"
+      subtitle="Utwórz workspace sprzedawcy i połącz rozszerzenie Chrome, gdy będziesz gotowy."
+      title="Uruchom workspace automatyzacji"
     >
       <Suspense>
         <AuthForm mode="register" />

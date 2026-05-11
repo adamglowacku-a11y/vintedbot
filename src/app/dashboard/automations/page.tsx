@@ -15,39 +15,39 @@ export default function AutomationsPage() {
         action={
           <Button type="button">
             <Bot className="size-4" />
-            New workflow
+            Nowy workflow
           </Button>
         }
-        description="Configure refresh schedules, action delays, queue rules, and seller-safe automation limits."
-        eyebrow="Workflow engine"
-        title="Automations"
+        description="Konfiguruj harmonogram odświeżania, opóźnienia, kolejki i bezpieczne limity działań."
+        eyebrow="Silnik workflow"
+        title="Automatyzacje"
       />
 
       <div className="grid gap-4 xl:grid-cols-[1fr_0.9fr]">
         <Card className="p-5">
-          <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Auto refresh settings</h2>
+          <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Ustawienia odświeżania</h2>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="refresh-window">Refresh window</Label>
+              <Label htmlFor="refresh-window">Okno odświeżania</Label>
               <Input id="refresh-window" defaultValue="09:00 - 22:30" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="delay">Randomized delay</Label>
-              <Input id="delay" defaultValue="45-75 minutes" />
+              <Label htmlFor="delay">Losowe opóźnienie</Label>
+              <Input id="delay" defaultValue="45-75 minut" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="daily-limit">Daily action limit</Label>
+              <Label htmlFor="daily-limit">Dzienny limit akcji</Label>
               <Input id="daily-limit" defaultValue="320" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="retry-limit">Retry limit</Label>
-              <Input id="retry-limit" defaultValue="3 attempts" />
+              <Label htmlFor="retry-limit">Limit ponowień</Label>
+              <Input id="retry-limit" defaultValue="3 próby" />
             </div>
           </div>
           <div className="mt-6 space-y-1">
             {scheduleOptions.map((option) => (
               <SettingsRow
-                description="Synced to the extension runtime before queue execution."
+                description="Synchronizowane z rozszerzeniem przed wykonaniem kolejki."
                 key={option.label}
                 title={option.label}
                 value={option.value}
@@ -59,12 +59,12 @@ export default function AutomationsPage() {
         <Card className="p-5">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Queue management</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Prepared queue state for background extension workers.</p>
+              <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Zarządzanie kolejką</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Stan kolejki przygotowany dla workerów rozszerzenia.</p>
             </div>
             <Button size="sm" type="button" variant="secondary">
               <Pause className="size-4" />
-              Pause all
+              Pauzuj wszystko
             </Button>
           </div>
           <div className="mt-5 space-y-3">
@@ -73,7 +73,7 @@ export default function AutomationsPage() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-medium text-white">{queue.name}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{queue.count} actions waiting</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{queue.count} akcji oczekuje</p>
                   </div>
                   <Badge variant={queue.status === "Running" ? "success" : "warning"}>{queue.status}</Badge>
                 </div>
@@ -81,7 +81,7 @@ export default function AutomationsPage() {
                   <span className="text-sm text-muted-foreground">{queue.window}</span>
                   <Button size="sm" type="button" variant="ghost">
                     <Play className="size-4" />
-                    Run
+                    Uruchom
                   </Button>
                 </div>
               </div>
@@ -96,14 +96,14 @@ export default function AutomationsPage() {
             <ShieldCheck className="size-5" />
           </span>
           <div>
-            <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Limits and safety settings</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Guardrails to prevent spammy behavior and protect seller accounts.</p>
+            <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Limity i bezpieczeństwo</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Zabezpieczenia chroniące konto przed agresywnym zachowaniem.</p>
           </div>
         </div>
         <div className="mt-5 grid gap-3 md:grid-cols-3">
-          {["Human-like randomization", "Manual approval above €80", "Pause on repeated failures"].map((item) => (
+          {["Losowe opóźnienia jak u człowieka", "Ręczna akceptacja powyżej 80 zł", "Pauza po powtarzających się błędach"].map((item) => (
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" key={item}>
-              <Badge variant="success">Enabled</Badge>
+              <Badge variant="success">Włączone</Badge>
               <p className="mt-3 text-sm font-medium text-white">{item}</p>
             </div>
           ))}

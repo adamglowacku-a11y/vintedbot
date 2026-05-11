@@ -7,13 +7,18 @@ type ParserObserverOptions = {
   debounceMs?: number;
 };
 
+export type ParserScanResult = {
+  listings: ReturnType<typeof parseListingsWithDiagnostics>["listings"];
+  health: ParserHealthState;
+};
+
 export function startParserObserver({ retryLimit = 4, debounceMs = 650 }: ParserObserverOptions = {}) {
   let retryCount = 0;
   let timer: number | undefined;
   let lastSignature = "";
   let mutationCount = 0;
 
-  async function runParser(reason: string) {
+  async function runParser(reason: string): Promise<ParserScanResult | undefined> {
     try {
       const result = parseListingsWithDiagnostics();
       const listings = result.listings;
@@ -33,7 +38,7 @@ export function startParserObserver({ retryLimit = 4, debounceMs = 650 }: Parser
       };
 
       if (signature === lastSignature && reason !== "manual") {
-        return;
+        return { listings, health };
       }
 
       lastSignature = signature;
@@ -54,23 +59,27 @@ export function startParserObserver({ retryLimit = 4, debounceMs = 650 }: Parser
       } else {
         retryCount = 0;
       }
+
+      return { listings, health };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown parser error.";
+      const health: ParserHealthState = {
+        status: "error",
+        lastRunAt: new Date().toISOString(),
+        listingsFound: 0,
+        retries: retryCount,
+        selectorVersion: SELECTOR_VERSION,
+        error: message,
+        logs: [createLog("error", message, { reason })]
+      };
       await safeRuntimeSend({
         type: "PARSER_RESULT",
         payload: {
           listings: [],
-          health: {
-            status: "error",
-            lastRunAt: new Date().toISOString(),
-            listingsFound: 0,
-            retries: retryCount,
-            selectorVersion: SELECTOR_VERSION,
-            error: message,
-            logs: [createLog("error", message, { reason })]
-          }
+          health
         }
       });
+      return { listings: [], health };
     }
   }
 
@@ -105,7 +114,7 @@ export function startParserObserver({ retryLimit = 4, debounceMs = 650 }: Parser
       window.clearTimeout(timer);
     },
     scanNow() {
-      void runParser("manual");
+      return runParser("manual");
     },
     schedule
   };

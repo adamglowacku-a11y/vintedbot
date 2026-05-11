@@ -8,9 +8,9 @@ export default function AnalyticsPage() {
   return (
     <>
       <PageHeader
-        description="Measure revenue, response speed, conversion impact, and automation lift across seller workflows."
-        eyebrow="Performance"
-        title="Analytics"
+        description="Mierz konwersję, szybkość odpowiedzi i wpływ automatyzacji. Kwoty są demo w złotówkach, dopóki nie podłączysz realnych zdarzeń sprzedaży."
+        eyebrow="Wydajność"
+        title="Analityka"
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -28,8 +28,8 @@ export default function AnalyticsPage() {
 
       <Card className="mt-4 p-5">
         <div className="mb-8">
-          <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Hourly performance</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Mock analytics chart ready to connect to Supabase events.</p>
+          <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Wydajność godzinowa</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Wykres demo gotowy do podłączenia zdarzeń z Supabase.</p>
         </div>
         <div className="flex h-80 items-end gap-3">
           {hourlyPerformance.map((height, index) => (

@@ -9,9 +9,9 @@ export function FAQ() {
       <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.8fr_1.2fr]">
         <div>
           <SectionEyebrow>FAQ</SectionEyebrow>
-          <SectionTitle>Questions sellers ask before automating.</SectionTitle>
+          <SectionTitle>Pytania, które sprzedawcy zadają przed automatyzacją.</SectionTitle>
           <SectionLead>
-            Built for practical workflows, clear limits, and a reliable extension-to-dashboard connection.
+            Projektowane pod praktyczne workflow, jasne limity i stabilne połączenie rozszerzenia z dashboardem.
           </SectionLead>
         </div>
         <div className="space-y-3">

@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertCircle, CheckCircle2, Loader2, PlugZap, RefreshCw, ShieldCheck, Wifi } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,6 +46,7 @@ export function ExtensionConnectCard() {
   const [extensionState, setExtensionState] = useState<ExtensionBridgeResponse["data"] | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [isConnecting, setIsConnecting] = useState(false);
+  const connectAttemptRef = useRef(0);
 
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
@@ -62,6 +63,7 @@ export function ExtensionConnectCard() {
       }
 
       if (event.data.type === "CONNECT_EXTENSION_RESULT") {
+        connectAttemptRef.current = 0;
         setIsConnecting(false);
         handleBridgeResponse(event.data.payload, "Rozszerzenie połączone z sesją Supabase.");
         pushToast(event.data.payload?.ok ? "success" : "error", event.data.payload?.ok ? "Rozszerzenie połączone." : "Połączenie nieudane.");
@@ -88,7 +90,7 @@ export function ExtensionConnectCard() {
 
         return currentStatus;
       });
-    }, 1500);
+    }, 5000);
 
     return () => {
       window.removeEventListener("message", handleMessage);
@@ -147,6 +149,8 @@ export function ExtensionConnectCard() {
 
   async function connectExtension() {
     setIsConnecting(true);
+    const attemptId = Date.now();
+    connectAttemptRef.current = attemptId;
     setStatus("checking");
     setMessage("Przygotowuję sesję Supabase dla rozszerzenia...");
 
@@ -164,28 +168,46 @@ export function ExtensionConnectCard() {
       return;
     }
 
-    window.postMessage(
-      {
-        source: "vintedflow-dashboard",
-        type: "CONNECT_EXTENSION",
-        payload: {
-          accessToken: session.access_token,
-          refreshToken: session.refresh_token,
-          expiresAt: session.expires_at,
-          user: {
-            id: session.user.id,
-            email: session.user.email,
-            name: session.user.user_metadata?.full_name ?? session.user.user_metadata?.name
-          }
-        }
-      },
-      window.location.origin
-    );
+    const payload = {
+      accessToken: session.access_token,
+      refreshToken: session.refresh_token,
+      expiresAt: session.expires_at,
+      user: {
+        id: session.user.id,
+        email: session.user.email,
+        name: session.user.user_metadata?.full_name ?? session.user.user_metadata?.name
+      }
+    };
+    const sendConnectRequest = () => {
+      window.postMessage(
+        {
+          source: "vintedflow-dashboard",
+          type: "CONNECT_EXTENSION",
+          payload
+        },
+        window.location.origin
+      );
+    };
+
+    [0, 700, 1800].forEach((delay) => window.setTimeout(sendConnectRequest, delay));
+    window.setTimeout(() => {
+      if (connectAttemptRef.current !== attemptId) {
+        return;
+      }
+
+      connectAttemptRef.current = 0;
+      setIsConnecting(false);
+      setStatus("error");
+      setMessage("Nie otrzymano potwierdzenia połączenia. Odśwież stronę i spróbuj ponownie.");
+      pushToast("error", "Brak potwierdzenia z rozszerzenia.");
+    }, 6500);
   }
 
   function refreshStatus() {
     setStatus("checking");
     setMessage("Odświeżam status rozszerzenia...");
+    window.postMessage({ source: "vintedflow-dashboard", type: "CHECK_EXTENSION" }, window.location.origin);
+    window.postMessage({ source: "vintedflow-dashboard", type: "GET_EXTENSION_STATE" }, window.location.origin);
     window.postMessage({ source: "vintedflow-dashboard", type: "SYNC_EXTENSION" }, window.location.origin);
     pushToast("info", "Odświeżam synchronizację rozszerzenia.");
   }

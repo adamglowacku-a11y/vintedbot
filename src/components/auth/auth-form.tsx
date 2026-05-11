@@ -66,7 +66,7 @@ export function AuthForm({ mode }: AuthFormProps) {
     }
 
     if (mode === "register" && !result.data.session) {
-      setMessage("Check your email to confirm your account.");
+      setMessage("Sprawdź email, aby potwierdzić konto.");
       return;
     }
 
@@ -96,26 +96,26 @@ export function AuthForm({ mode }: AuthFormProps) {
     <div className="space-y-5">
       <Button className="w-full" disabled={isLoading} onClick={handleGoogleAuth} type="button" variant="secondary">
         <MonitorSmartphone className="size-4" />
-        Continue with Google
+        Kontynuuj z Google
       </Button>
 
       <div className="flex items-center gap-3">
         <div className="h-px flex-1 bg-white/10" />
-        <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">or</span>
+        <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">lub</span>
         <div className="h-px flex-1 bg-white/10" />
       </div>
 
       <form className="space-y-4" onSubmit={handleEmailAuth}>
         {mode === "register" ? (
           <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">Imię</Label>
             <div className="relative">
               <UserPlus className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 className="pl-11"
                 id="name"
                 onChange={(event) => setName(event.target.value)}
-                placeholder="Adam Seller"
+                placeholder="Adam Sprzedawca"
                 required
                 value={name}
               />
@@ -124,14 +124,14 @@ export function AuthForm({ mode }: AuthFormProps) {
         ) : null}
 
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">Email</Label>
           <div className="relative">
             <Mail className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               className="pl-11"
               id="email"
               onChange={(event) => setEmail(event.target.value)}
-              placeholder="seller@example.com"
+                placeholder="sprzedawca@example.com"
               required
               type="email"
               value={email}
@@ -140,7 +140,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">Hasło</Label>
           <div className="relative">
             <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -148,7 +148,7 @@ export function AuthForm({ mode }: AuthFormProps) {
               id="password"
               minLength={8}
               onChange={(event) => setPassword(event.target.value)}
-              placeholder="Minimum 8 characters"
+              placeholder="Minimum 8 znaków"
               required
               type="password"
               value={password}
@@ -163,7 +163,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         ) : null}
 
         <Button className="w-full" disabled={isLoading} type="submit">
-          {isLoading ? "Please wait..." : mode === "login" ? "Sign in" : "Create account"}
+          {isLoading ? "Proszę czekać..." : mode === "login" ? "Zaloguj się" : "Utwórz konto"}
         </Button>
       </form>
     </div>

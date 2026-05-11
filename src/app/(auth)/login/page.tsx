@@ -9,14 +9,14 @@ export default function LoginPage() {
     <AuthShell
       footer={
         <>
-          New to VintedFlow?{" "}
+          Nie masz konta?{" "}
           <Link className="font-medium text-primary hover:text-primary/80" href="/register">
-            Create an account
+            Utwórz konto
           </Link>
         </>
       }
-      subtitle="Sign in to manage automations, listings, messages, and extension sync."
-      title="Welcome back"
+      subtitle="Zaloguj się, aby zarządzać automatyzacjami, ofertami, wiadomościami i synchronizacją rozszerzenia."
+      title="Witaj ponownie"
     >
       <Suspense>
         <AuthForm mode="login" />

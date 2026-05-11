@@ -15,17 +15,17 @@ export default function MessagesPage() {
         action={
           <Button type="button">
             <MessageSquareText className="size-4" />
-            New template
+            Nowy szablon
           </Button>
         }
-        description="Create buyer reply templates, tune auto replies, and protect accounts with cooldowns and spam checks."
-        eyebrow="Inbox automation"
-        title="Messages"
+        description="Twórz szablony odpowiedzi, ustawiaj automatyczne wiadomości i chroń konto cooldownami."
+        eyebrow="Automatyzacja inboxa"
+        title="Wiadomości"
       />
 
       <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
         <Card className="p-5">
-          <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Message templates</h2>
+          <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Szablony wiadomości</h2>
           <div className="mt-5 space-y-3">
             {messageTemplates.map((template) => (
               <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" key={template.name}>
@@ -37,34 +37,34 @@ export default function MessagesPage() {
                     </p>
                   </div>
                   <Badge variant={template.enabled ? "success" : "muted"}>
-                    {template.enabled ? "Enabled" : "Paused"}
+                    {template.enabled ? "Włączony" : "Wstrzymany"}
                   </Badge>
                 </div>
               </div>
             ))}
           </div>
           <div className="mt-5">
-            <Textarea defaultValue="Hi! Thanks for your interest. I can ship this item tomorrow and can offer a bundle discount if you add another listing." />
+            <Textarea defaultValue="Cześć! Dzięki za zainteresowanie. Mogę wysłać przedmiot jutro i dorzucić rabat, jeśli dodasz coś jeszcze do zestawu." />
           </div>
         </Card>
 
         <Card className="p-5">
-          <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Auto reply settings</h2>
+          <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Ustawienia auto-odpowiedzi</h2>
           <div className="mt-4 space-y-1">
             <SettingsRow
-              badge="AI ready"
-              description="Suggest replies based on listing context and buyer intent."
-              title="Contextual replies"
-              value="Enabled"
+              badge="AI gotowe"
+              description="Sugeruje odpowiedzi na podstawie oferty i intencji kupującego."
+              title="Odpowiedzi kontekstowe"
+              value="Włączone"
             />
             <SettingsRow
-              description="Require review for messages with price changes above configured margin."
-              title="Approval threshold"
-              value="€15+"
+              description="Wymaga akceptacji dla wiadomości ze zmianą ceny powyżej progu."
+              title="Próg akceptacji"
+              value="15 zł+"
             />
             <SettingsRow
-              description="Do not send more than one automated message per buyer during cooldown."
-              title="Buyer cooldown"
+              description="Nie wysyła więcej niż jednej automatycznej wiadomości do kupującego w czasie cooldownu."
+              title="Cooldown kupującego"
               value="45 min"
             />
           </div>
@@ -75,19 +75,19 @@ export default function MessagesPage() {
         <Card className="p-5">
           <div className="flex items-center gap-3">
             <TimerReset className="size-5 text-primary" />
-            <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Cooldown timers</h2>
+            <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Timery cooldown</h2>
           </div>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Queue messages using randomized delays, quiet hours, and per-buyer throttles before extension dispatch.
+            Kolejkuj wiadomości z losowym opóźnieniem, godzinami ciszy i limitami per kupujący.
           </p>
         </Card>
         <Card className="p-5">
           <div className="flex items-center gap-3">
             <ShieldAlert className="size-5 text-primary" />
-            <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Spam protection</h2>
+            <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Ochrona przed spamem</h2>
           </div>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Detect repeated content, blocked keywords, failed sends, and unusual message velocity before automation continues.
+            Wykrywaj powtarzalne treści, blokowane frazy, błędy wysyłki i nienaturalne tempo wiadomości.
           </p>
         </Card>
       </div>

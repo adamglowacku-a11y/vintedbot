@@ -11,23 +11,23 @@ export default function SettingsPage() {
   return (
     <>
       <PageHeader
-        action={<Button type="button">Save changes</Button>}
-        description="Manage account preferences, subscription status, extension sync, API credentials, and security controls."
+        action={<Button type="button">Zapisz zmiany</Button>}
+        description="Zarządzaj kontem, subskrypcją, synchronizacją rozszerzenia, API i bezpieczeństwem."
         eyebrow="Workspace"
-        title="Settings"
+        title="Ustawienia"
       />
 
       <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
         <Card className="p-5">
-          <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Account settings</h2>
+          <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Ustawienia konta</h2>
           <div className="mt-5 space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="workspace">Workspace name</Label>
-              <Input id="workspace" defaultValue="Adam's Vinted Studio" />
+              <Label htmlFor="workspace">Nazwa workspace</Label>
+              <Input id="workspace" defaultValue="Studio Vinted Adama" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">Notification email</Label>
-              <Input id="email" defaultValue="seller@example.com" />
+              <Label htmlFor="email">Email powiadomień</Label>
+              <Input id="email" defaultValue="sprzedawca@example.com" />
             </div>
           </div>
         </Card>
@@ -35,13 +35,13 @@ export default function SettingsPage() {
         <Card className="p-5">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Subscription info</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Stripe-ready billing summary for SaaS monetization.</p>
+              <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Subskrypcja</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Podsumowanie płatności przygotowane pod Stripe.</p>
             </div>
             <Badge variant="success">Growth</Badge>
           </div>
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            {["€49/mo", "Unlimited listings", "Renews Jun 9"].map((item) => (
+            {["49 zł / mies.", "Nielimitowane oferty", "Odnowienie 9 czerwca"].map((item) => (
               <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm font-medium text-white" key={item}>
                 {item}
               </div>
@@ -59,7 +59,7 @@ export default function SettingsPage() {
                 <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.04] p-4" key={item}>
                   <span className="text-sm text-white">{item}</span>
                   <Button size="sm" type="button" variant="ghost">
-                    Manage
+                    Zarządzaj
                   </Button>
                 </div>
               ))}
@@ -72,19 +72,19 @@ export default function SettingsPage() {
         <Card className="p-5">
           <div className="flex items-center gap-3">
             <KeyRound className="size-5 text-primary" />
-            <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">API access</h2>
+            <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Dostęp API</h2>
           </div>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Reserve API key management, webhook secrets, and extension pairing tokens for future backend routes.
+            Miejsce na klucze API, sekrety webhooków i tokeny parowania rozszerzenia.
           </p>
         </Card>
         <Card className="p-5">
           <div className="flex items-center gap-3">
             <ShieldCheck className="size-5 text-primary" />
-            <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Security</h2>
+            <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">Bezpieczeństwo</h2>
           </div>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Track sessions, OAuth providers, audit logs, and account-level automation approvals.
+            Śledź sesje, OAuth, logi audytu i akceptacje automatyzacji na poziomie konta.
           </p>
         </Card>
       </div>

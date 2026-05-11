@@ -52,9 +52,16 @@ window.addEventListener("focus", () => {
 
 chrome.runtime.onMessage.addListener((message: VintedContentMessage, _sender, sendResponse) => {
   if (message.type === "SCAN_NOW") {
-    parserObserver.scanNow();
-    sendResponse({ ok: true });
-    return false;
+    parserObserver
+      .scanNow()
+      .then(() => sendResponse({ ok: true }))
+      .catch((error: unknown) => {
+        sendResponse({
+          ok: false,
+          error: error instanceof Error ? error.message : "Nie udało się przeskanować strony Vinted."
+        });
+      });
+    return true;
   }
 
   if (message.type === "EXECUTE_REFRESH_CLICK") {
