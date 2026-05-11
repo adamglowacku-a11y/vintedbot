@@ -4,7 +4,12 @@ export const STORAGE_KEYS = {
   state: "vintedflow:state"
 } as const;
 
-export const DASHBOARD_ORIGINS = ["https://vintly.live", "http://localhost:3000"];
+export const DASHBOARD_ORIGINS = [
+  "https://vintly.live",
+  "https://www.vintly.live",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000"
+];
 
 export const SUPABASE_URL =
   import.meta.env.VITE_SUPABASE_URL ?? import.meta.env.NEXT_PUBLIC_SUPABASE_URL ?? "";

@@ -73,13 +73,16 @@ export function ExtensionConnectCard() {
     }
 
     window.addEventListener("message", handleMessage);
-    window.postMessage({ source: "vintedflow-dashboard", type: "CHECK_EXTENSION" }, window.location.origin);
-    window.postMessage({ source: "vintedflow-dashboard", type: "GET_EXTENSION_STATE" }, window.location.origin);
+    const checkBridge = () => {
+      window.postMessage({ source: "vintedflow-dashboard", type: "CHECK_EXTENSION" }, window.location.origin);
+      window.postMessage({ source: "vintedflow-dashboard", type: "GET_EXTENSION_STATE" }, window.location.origin);
+    };
+    const retryTimers = [0, 500, 1500, 3000].map((delay) => window.setTimeout(checkBridge, delay));
 
     const timeout = window.setTimeout(() => {
       setStatus((currentStatus) => {
         if (currentStatus === "checking") {
-          setMessage("Nie wykryto rozszerzenia. Załaduj lub odśwież extension/dist, potem odśwież tę stronę.");
+          setMessage("Nie wykryto rozszerzenia. Przeładuj rozszerzenie w chrome://extensions i odśwież tę stronę.");
           return "missing";
         }
 
@@ -89,6 +92,7 @@ export function ExtensionConnectCard() {
 
     return () => {
       window.removeEventListener("message", handleMessage);
+      retryTimers.forEach((timer) => window.clearTimeout(timer));
       window.clearTimeout(timeout);
     };
   }, []);

@@ -27,7 +27,7 @@ type DashboardBridgeMessage =
 void emitReady(window.location.origin);
 
 window.addEventListener("message", (event: MessageEvent<DashboardBridgeMessage>) => {
-  if (!DASHBOARD_ORIGINS.includes(event.origin)) {
+  if (!isAllowedDashboardOrigin(event.origin)) {
     return;
   }
 
@@ -93,6 +93,25 @@ window.addEventListener("message", (event: MessageEvent<DashboardBridgeMessage>)
     void forwardToExtension({ type: "DASHBOARD_LOGOUT" }, "EXTENSION_STATE", event.origin);
   }
 });
+
+function isAllowedDashboardOrigin(origin: string) {
+  if (DASHBOARD_ORIGINS.includes(origin)) {
+    return true;
+  }
+
+  try {
+    const url = new URL(origin);
+    return (
+      url.hostname === "localhost" ||
+      url.hostname === "127.0.0.1" ||
+      url.hostname === "vintly.live" ||
+      url.hostname === "www.vintly.live" ||
+      url.hostname.endsWith(".vercel.app")
+    );
+  } catch {
+    return false;
+  }
+}
 
 async function emitReady(origin: string) {
   const response = await sendRuntimeMessage({ type: "PING" });

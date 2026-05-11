@@ -25,7 +25,10 @@
     "https://*.vinted.be/*",
     "https://*.vinted.co.uk/*",
     "https://vintly.live/*",
-    "http://localhost:3000/*",
+    "https://www.vintly.live/*",
+    "https://*.vercel.app/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*",
     "https://*.supabase.co/*"
   ],
   "content_scripts": [
@@ -45,7 +48,13 @@
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://vintly.live/*", "http://localhost:3000/*"],
+      "matches": [
+        "https://vintly.live/*",
+        "https://www.vintly.live/*",
+        "https://*.vercel.app/*",
+        "http://localhost/*",
+        "http://127.0.0.1/*"
+      ],
       "js": ["content/dashboard-bridge.js"],
       "run_at": "document_idle"
     }
