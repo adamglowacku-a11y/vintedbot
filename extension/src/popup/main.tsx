@@ -1,17 +1,19 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 
+import { PopupErrorBoundary } from "@/popup/error-boundary";
 import { PopupApp } from "@/popup/popup-app";
 import "@/popup/styles.css";
 
-const root = document.getElementById("root");
+const existingRoot = document.getElementById("root");
+const root = existingRoot ?? document.body.appendChild(document.createElement("div"));
 
-if (!root) {
-  throw new Error("Popup root element not found.");
-}
+root.id = "root";
 
 createRoot(root).render(
   <React.StrictMode>
-    <PopupApp />
+    <PopupErrorBoundary>
+      <PopupApp />
+    </PopupErrorBoundary>
   </React.StrictMode>
 );

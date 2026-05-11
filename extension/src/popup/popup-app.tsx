@@ -1,32 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { DASHBOARD_URL } from "@/lib/constants";
+import { DASHBOARD_URL, DEFAULT_STATE } from "@/lib/constants";
 import { languageLabels, messages } from "@/lib/i18n";
 import { moduleRegistry } from "@/modules/registry";
-import type { ExtensionMessage, ExtensionResponse, ExtensionState, SupportedLocale } from "@/types/extension";
-
-function sendExtensionMessage<T>(message: ExtensionMessage): Promise<ExtensionResponse<T>> {
-  return chrome.runtime.sendMessage(message);
-}
+import { sendPopupMessage } from "@/popup/safe-runtime";
+import type { ExtensionState, SupportedLocale } from "@/types/extension";
 
 export function PopupApp() {
-  const [state, setState] = useState<ExtensionState | null>(null);
+  const [state, setState] = useState<ExtensionState>(DEFAULT_STATE);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const locale = state?.locale ?? "pl";
+  const locale = state.locale ?? "pl";
   const t = messages[locale];
 
   async function refreshState() {
     setError(null);
-    const response = await sendExtensionMessage<ExtensionState>({ type: "GET_STATE" });
+    const response = await sendPopupMessage({ type: "GET_STATE" });
 
-    if (!response.ok || !response.data) {
-      setError(response.error ?? "Could not load extension state.");
-      setIsLoading(false);
-      return;
-    }
-
-    setState(response.data);
+    setState(response.data ?? DEFAULT_STATE);
+    setError(response.ok ? null : (response.error ?? "Nie udało się załadować stanu rozszerzenia."));
     setIsLoading(false);
   }
 
@@ -50,8 +42,8 @@ export function PopupApp() {
 
   async function handleSync() {
     setIsLoading(true);
-    const response = await sendExtensionMessage<ExtensionState>({ type: "SYNC_NOW" });
-    setState(response.data ?? null);
+    const response = await sendPopupMessage({ type: "SYNC_NOW" });
+    setState(response.data ?? DEFAULT_STATE);
     setError(response.error ?? null);
     setIsLoading(false);
   }
@@ -61,7 +53,7 @@ export function PopupApp() {
       return;
     }
 
-    const response = await sendExtensionMessage<ExtensionState>({
+    const response = await sendPopupMessage({
       type: "TOGGLE_AUTOMATION",
       payload: {
         enabled: !state.automationEnabled
@@ -74,13 +66,17 @@ export function PopupApp() {
   }
 
   async function openDashboard() {
-    await chrome.tabs.create({
-      url: `${DASHBOARD_URL}/extension/connect`
-    });
+    try {
+      await chrome.tabs.create({
+        url: `${DASHBOARD_URL}/extension/connect`
+      });
+    } catch (openError) {
+      setError(openError instanceof Error ? openError.message : "Nie udało się otworzyć dashboardu.");
+    }
   }
 
   async function disconnect() {
-    const response = await sendExtensionMessage<ExtensionState>({ type: "DISCONNECT_SESSION" });
+    const response = await sendPopupMessage({ type: "DISCONNECT_SESSION" });
     if (response.data) {
       setState(response.data);
     }
@@ -88,7 +84,7 @@ export function PopupApp() {
 
   async function requestRefresh(listingId: string) {
     setIsLoading(true);
-    const response = await sendExtensionMessage<ExtensionState>({
+    const response = await sendPopupMessage({
       type: "REQUEST_REFRESH_LISTING",
       payload: { listingId }
     });
@@ -98,14 +94,14 @@ export function PopupApp() {
   }
 
   async function cancelAction() {
-    const response = await sendExtensionMessage<ExtensionState>({ type: "CANCEL_ACTIVE_ACTION" });
+    const response = await sendPopupMessage({ type: "CANCEL_ACTIVE_ACTION" });
     if (response.data) {
       setState(response.data);
     }
   }
 
   async function changeLocale(nextLocale: SupportedLocale) {
-    const response = await sendExtensionMessage<ExtensionState>({
+    const response = await sendPopupMessage({
       type: "SET_LOCALE",
       payload: {
         locale: nextLocale
@@ -133,7 +129,16 @@ export function PopupApp() {
         </div>
       </section>
 
-      {isLoading ? <div className="panel muted">{t.loading}</div> : null}
+      {isLoading ? (
+        <div className="panel muted">
+          <p>{t.loading}</p>
+          <div className="skeleton-list">
+            <span />
+            <span />
+            <span />
+          </div>
+        </div>
+      ) : null}
       {error ? <div className="panel error">{error}</div> : null}
 
       <section className="panel">

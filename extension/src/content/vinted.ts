@@ -20,7 +20,7 @@ async function publishDetectionState() {
     payload: getDetectionState()
   };
 
-  await chrome.runtime.sendMessage(message);
+  await safeRuntimeSend(message);
 }
 
 void publishDetectionState();
@@ -72,3 +72,14 @@ chrome.runtime.onMessage.addListener((message: VintedContentMessage, _sender, se
 
   return false;
 });
+
+async function safeRuntimeSend(message: ExtensionMessage) {
+  try {
+    await chrome.runtime.sendMessage(message);
+  } catch (error) {
+    console.warn(
+      "[VintedFlow content runtime]",
+      error instanceof Error ? error.message : "Nie udało się wysłać wiadomości do service workera."
+    );
+  }
+}

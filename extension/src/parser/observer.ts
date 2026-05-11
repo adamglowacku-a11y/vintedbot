@@ -33,7 +33,7 @@ export function startParserObserver({ retryLimit = 4, debounceMs = 650 }: Parser
 
       lastSignature = signature;
 
-      await chrome.runtime.sendMessage<ExtensionMessage>({
+      await safeRuntimeSend({
         type: "PARSER_RESULT",
         payload: {
           listings,
@@ -51,7 +51,7 @@ export function startParserObserver({ retryLimit = 4, debounceMs = 650 }: Parser
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown parser error.";
-      await chrome.runtime.sendMessage<ExtensionMessage>({
+      await safeRuntimeSend({
         type: "PARSER_RESULT",
         payload: {
           listings: [],
@@ -98,6 +98,17 @@ export function startParserObserver({ retryLimit = 4, debounceMs = 650 }: Parser
       void runParser("manual");
     }
   };
+}
+
+async function safeRuntimeSend(message: ExtensionMessage) {
+  try {
+    await chrome.runtime.sendMessage(message);
+  } catch (error) {
+    console.warn(
+      "[VintedFlow parser runtime]",
+      error instanceof Error ? error.message : "Parser nie połączył się z service workerem."
+    );
+  }
 }
 
 function createLog(
