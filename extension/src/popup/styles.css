@@ -260,6 +260,29 @@ h1 {
   gap: 8px;
 }
 
+.diagnostics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.diagnostics-grid span,
+.selector-counters p {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 7px 8px;
+  font-size: 11px;
+}
+
+.selector-counters {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+  word-break: break-word;
+}
+
 .button {
   min-height: 38px;
   border: 1px solid rgba(255, 255, 255, 0.1);

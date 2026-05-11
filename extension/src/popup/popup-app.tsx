@@ -100,6 +100,16 @@ export function PopupApp() {
     }
   }
 
+  async function manualScan() {
+    setIsLoading(true);
+    const response = await sendPopupMessage({ type: "MANUAL_SCAN" });
+    if (response.data) {
+      setState(response.data);
+    }
+    setError(response.error ?? null);
+    setIsLoading(false);
+  }
+
   async function changeLocale(nextLocale: SupportedLocale) {
     const response = await sendPopupMessage({
       type: "SET_LOCALE",
@@ -210,6 +220,9 @@ export function PopupApp() {
           <button className="button" disabled={!state?.isConnected} onClick={handleSync} type="button">
             {t.syncNow}
           </button>
+          <button className="button" onClick={manualScan} type="button">
+            Skanuj DOM
+          </button>
           <button className="button" onClick={handleToggleAutomation} type="button">
             {state?.automationEnabled ? t.paused : t.monitoring}
           </button>
@@ -254,6 +267,22 @@ export function PopupApp() {
 
       <section className="panel">
         <p className="section-title">{t.parserHealth}</p>
+        <div className="diagnostics-grid">
+          <span>czas: {state.parserHealth.scanDurationMs ?? 0}ms</span>
+          <span>linki: {state.parserHealth.domHealth?.anchorsFound ?? 0}</span>
+          <span>widoczne: {state.parserHealth.domHealth?.visibleCandidates ?? 0}</span>
+          <span>obrazy: {state.parserHealth.domHealth?.imageCardsFound ?? 0}</span>
+        </div>
+        <div className="selector-counters">
+          {Object.entries(state.parserHealth.selectorCounters ?? {})
+            .filter(([, count]) => count > 0)
+            .slice(0, 4)
+            .map(([selector, count]) => (
+              <p className="secondary-text" key={selector}>
+                {selector}: {count}
+              </p>
+            ))}
+        </div>
         <div className="module-list">
           {state?.parserHealth.logs.slice(0, 3).map((log) => (
             <div className="module-row" key={log.id}>

@@ -26,7 +26,14 @@ export const DEFAULT_STATE: ExtensionState = {
     status: "idle",
     listingsFound: 0,
     retries: 0,
-    selectorVersion: "vinted-card-parser@1",
+    selectorVersion: "vinted-card-parser@2",
+    selectorCounters: {},
+    domHealth: {
+      anchorsFound: 0,
+      imageCardsFound: 0,
+      visibleCandidates: 0,
+      bodyTextLength: 0
+    },
     logs: []
   },
   actionQueue: {

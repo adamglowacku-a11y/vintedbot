@@ -18,6 +18,7 @@ type DashboardBridgeMessage =
         | "CHECK_EXTENSION"
         | "GET_EXTENSION_STATE"
         | "SYNC_EXTENSION"
+        | "MANUAL_SCAN"
         | "DISCONNECT_EXTENSION"
         | "DASHBOARD_LOGOUT"
         | "CANCEL_ACTIVE_ACTION";
@@ -58,6 +59,11 @@ window.addEventListener("message", (event: MessageEvent<DashboardBridgeMessage>)
 
   if (event.data.type === "SYNC_EXTENSION") {
     void forwardToExtension({ type: "SYNC_NOW" }, "EXTENSION_STATE", event.origin);
+    return;
+  }
+
+  if (event.data.type === "MANUAL_SCAN") {
+    void forwardToExtension({ type: "MANUAL_SCAN" }, "EXTENSION_STATE", event.origin);
     return;
   }
 

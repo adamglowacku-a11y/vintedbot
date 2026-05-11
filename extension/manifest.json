@@ -19,6 +19,11 @@
     "https://*.vinted.pl/*",
     "https://*.vinted.fr/*",
     "https://*.vinted.de/*",
+    "https://*.vinted.it/*",
+    "https://*.vinted.es/*",
+    "https://*.vinted.nl/*",
+    "https://*.vinted.be/*",
+    "https://*.vinted.co.uk/*",
     "https://vintly.live/*",
     "http://localhost:3000/*",
     "https://*.supabase.co/*"
@@ -29,7 +34,12 @@
         "https://*.vinted.com/*",
         "https://*.vinted.pl/*",
         "https://*.vinted.fr/*",
-        "https://*.vinted.de/*"
+        "https://*.vinted.de/*",
+        "https://*.vinted.it/*",
+        "https://*.vinted.es/*",
+        "https://*.vinted.nl/*",
+        "https://*.vinted.be/*",
+        "https://*.vinted.co.uk/*"
       ],
       "js": ["content/vinted.js"],
       "run_at": "document_idle"

@@ -3,7 +3,7 @@ import { startParserObserver } from "@/parser/observer";
 import { executeRefreshClick } from "@/content/refresh-executor";
 import type { VintedContentMessage } from "@/types/extension";
 
-const VINTED_HOST_PATTERN = /(^|\.)vinted\.(com|pl|fr|de)$/i;
+const VINTED_HOST_PATTERN = /(^|\.)vinted\.(com|pl|fr|de|it|es|nl|be|co\.uk)$/i;
 
 function getDetectionState(): VintedDetectionState {
   return {
@@ -45,6 +45,7 @@ observer.observe(document.documentElement, {
 
 window.addEventListener("focus", () => {
   void publishDetectionState();
+  parserObserver.schedule("focus-rescan");
 });
 
 chrome.runtime.onMessage.addListener((message: VintedContentMessage, _sender, sendResponse) => {

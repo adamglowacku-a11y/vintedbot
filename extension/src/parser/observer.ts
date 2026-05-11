@@ -1,4 +1,5 @@
-import { parseListingsFromDocument } from "@/parser/listing-parser";
+import { updateParserDebugOverlay } from "@/parser/debug-overlay";
+import { parseListingsWithDiagnostics } from "@/parser/listing-parser";
 import { SELECTOR_VERSION } from "@/parser/selectors";
 import type { ExtensionLog, ExtensionMessage, ParserHealthState } from "@/types/extension";
 
@@ -11,21 +12,28 @@ export function startParserObserver({ retryLimit = 4, debounceMs = 650 }: Parser
   let retryCount = 0;
   let timer: number | undefined;
   let lastSignature = "";
+  let mutationCount = 0;
 
   async function runParser(reason: string) {
     try {
-      const listings = parseListingsFromDocument();
+      const result = parseListingsWithDiagnostics();
+      const listings = result.listings;
       const signature = listings.map((listing) => listing.id).join("|");
-      const log = createLog("info", `Parser run completed: ${listings.length} listings.`, { reason });
+      const log = createLog("info", `Parser run completed: ${listings.length} listings.`, {
+        reason,
+        scanDurationMs: result.health.scanDurationMs ?? 0,
+        anchorsFound: result.health.domHealth?.anchorsFound ?? 0,
+        mutationCount
+      });
       const health: ParserHealthState = {
         status: listings.length > 0 ? "healthy" : retryCount >= retryLimit ? "degraded" : "scanning",
-        lastRunAt: new Date().toISOString(),
-        lastSuccessAt: listings.length > 0 ? new Date().toISOString() : undefined,
-        listingsFound: listings.length,
+        ...result.health,
         retries: retryCount,
         selectorVersion: SELECTOR_VERSION,
         logs: [log]
       };
+
+      updateParserDebugOverlay(health);
 
       if (signature === lastSignature && reason !== "manual") {
         return;
@@ -45,7 +53,7 @@ export function startParserObserver({ retryLimit = 4, debounceMs = 650 }: Parser
         retryCount += 1;
         window.setTimeout(() => {
           void runParser("retry");
-        }, 900 * retryCount);
+        }, 900 * retryCount + Math.min(2500, document.body.innerText.length / 20));
       } else {
         retryCount = 0;
       }
@@ -77,6 +85,7 @@ export function startParserObserver({ retryLimit = 4, debounceMs = 650 }: Parser
   }
 
   const observer = new MutationObserver(() => {
+    mutationCount += 1;
     schedule("dom-mutation");
   });
 
@@ -86,8 +95,12 @@ export function startParserObserver({ retryLimit = 4, debounceMs = 650 }: Parser
   });
 
   window.addEventListener("focus", () => schedule("focus"));
+  window.addEventListener("scroll", () => schedule("scroll-lazy-load"), { passive: true });
   window.addEventListener("popstate", () => schedule("navigation"));
   schedule("initial");
+  [400, 1200, 2500, 5000, 8500].forEach((delay) => {
+    window.setTimeout(() => schedule(`delayed-hydration-${delay}`), delay);
+  });
 
   return {
     stop() {
@@ -96,9 +109,12 @@ export function startParserObserver({ retryLimit = 4, debounceMs = 650 }: Parser
     },
     scanNow() {
       void runParser("manual");
-    }
+    },
+    schedule
   };
 }
+
+export type ParserObserverController = ReturnType<typeof startParserObserver>;
 
 async function safeRuntimeSend(message: ExtensionMessage) {
   try {

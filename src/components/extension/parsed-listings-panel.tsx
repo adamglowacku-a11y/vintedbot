@@ -23,6 +23,15 @@ type ParserHealth = {
   listingsFound: number;
   retries: number;
   lastRunAt?: string;
+  scanDurationMs?: number;
+  selectorCounters?: Record<string, number>;
+  domHealth?: {
+    anchorsFound: number;
+    imageCardsFound: number;
+    visibleCandidates: number;
+    documentReadyState?: string;
+    bodyTextLength: number;
+  };
   error?: string;
 };
 
@@ -115,6 +124,10 @@ export function ParsedListingsPanel() {
     window.postMessage({ source: "vintedflow-dashboard", type: "CANCEL_ACTIVE_ACTION" }, window.location.origin);
   }
 
+  function manualScan() {
+    window.postMessage({ source: "vintedflow-dashboard", type: "MANUAL_SCAN" }, window.location.origin);
+  }
+
   function handleResponse(response?: ExtensionStateResponse) {
     if (!response?.ok) {
       setStatus("error");
@@ -154,6 +167,9 @@ export function ParsedListingsPanel() {
             <RefreshCw className="size-4" />
             Odśwież
           </Button>
+          <Button onClick={manualScan} size="sm" type="button" variant="secondary">
+            Skanuj DOM
+          </Button>
           <Button disabled={!extensionState?.actionQueue.activeJob} onClick={cancelAction} size="sm" type="button" variant="ghost">
             Anuluj akcję
           </Button>
@@ -169,6 +185,40 @@ export function ParsedListingsPanel() {
           ) : (
             <span>Cooldown odświeżania: {formatCooldown(extensionState.actionQueue.cooldownUntil)}</span>
           )}
+        </div>
+      ) : null}
+
+      {health ? (
+        <div className="grid gap-3 border-b border-white/10 p-5 text-sm text-muted-foreground md:grid-cols-4">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Czas skanu</p>
+            <p className="mt-1 font-semibold text-white">{health.scanDurationMs ?? 0} ms</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Linki ofert</p>
+            <p className="mt-1 font-semibold text-white">{health.domHealth?.anchorsFound ?? 0}</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Widoczne karty</p>
+            <p className="mt-1 font-semibold text-white">{health.domHealth?.visibleCandidates ?? 0}</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Karty z obrazami</p>
+            <p className="mt-1 font-semibold text-white">{health.domHealth?.imageCardsFound ?? 0}</p>
+          </div>
+          <div className="md:col-span-4">
+            <p className="mb-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">Najlepsze selektory</p>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(health.selectorCounters ?? {})
+                .filter(([, count]) => count > 0)
+                .slice(0, 8)
+                .map(([selector, count]) => (
+                  <Badge key={selector} variant="muted">
+                    {selector}: {count}
+                  </Badge>
+                ))}
+            </div>
+          </div>
         </div>
       ) : null}
 

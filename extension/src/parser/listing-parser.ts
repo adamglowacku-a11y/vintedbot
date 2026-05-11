@@ -6,15 +6,20 @@ import {
   statusKeywords,
   titleSelectors
 } from "@/parser/selectors";
-import type { ParsedListingStatus, ParsedVintedListing } from "@/types/extension";
+import type { ParsedListingStatus, ParsedVintedListing, ParserHealthState } from "@/types/extension";
 
 const PRICE_PATTERN = /(?<currency>€|zł|PLN|EUR|\$|£)\s?(?<amount>\d+(?:[.,]\d{1,2})?)|(?<amountAfter>\d+(?:[.,]\d{1,2})?)\s?(?<currencyAfter>€|zł|PLN|EUR|\$|£)/i;
 
 export function parseListingsFromDocument(documentRoot: Document = document) {
+  return parseListingsWithDiagnostics(documentRoot).listings;
+}
+
+export function parseListingsWithDiagnostics(documentRoot: Document = document) {
+  const startedAt = performance.now();
   const candidates = collectListingCandidates(documentRoot);
   const listings = new Map<string, ParsedVintedListing>();
 
-  for (const candidate of candidates) {
+  for (const candidate of candidates.elements) {
     const listing = parseListingCard(candidate);
 
     if (listing) {
@@ -22,24 +27,93 @@ export function parseListingsFromDocument(documentRoot: Document = document) {
     }
   }
 
-  return Array.from(listings.values()).slice(0, 80);
+  const parsedListings = Array.from(listings.values()).slice(0, 120);
+  const scanDurationMs = Math.round(performance.now() - startedAt);
+  const health: Omit<ParserHealthState, "status" | "retries" | "logs"> = {
+    lastRunAt: new Date().toISOString(),
+    lastSuccessAt: parsedListings.length > 0 ? new Date().toISOString() : undefined,
+    listingsFound: parsedListings.length,
+    selectorVersion: SELECTOR_VERSION,
+    scanDurationMs,
+    selectorCounters: candidates.selectorCounters,
+    domHealth: {
+      anchorsFound: candidates.anchorsFound,
+      imageCardsFound: candidates.imageCardsFound,
+      visibleCandidates: candidates.visibleCandidates,
+      documentReadyState: documentRoot.readyState,
+      bodyTextLength: documentRoot.body?.innerText.length ?? 0
+    }
+  };
+
+  return {
+    listings: parsedListings,
+    health
+  };
 }
 
 function collectListingCandidates(documentRoot: Document) {
   const elements = new Set<Element>();
+  const selectorCounters: Record<string, number> = {};
 
   for (const selector of listingCardSelectors) {
-    documentRoot.querySelectorAll(selector).forEach((element) => {
-      const card = element.closest("[data-testid*='item-box'], article, div") ?? element;
+    const matches = Array.from(documentRoot.querySelectorAll(selector));
+    selectorCounters[selector] = matches.length;
+    matches.forEach((element) => {
+      const card = findBestCardContainer(element);
       elements.add(card);
     });
   }
 
-  documentRoot.querySelectorAll("a[href*='/items/'], a[href*='/item/']").forEach((anchor) => {
-    elements.add(anchor.closest("[data-testid*='item-box'], article, div") ?? anchor);
+  const listingAnchors = Array.from(documentRoot.querySelectorAll<HTMLAnchorElement>("a[href*='/items/'], a[href*='/item/']"));
+  listingAnchors.forEach((anchor) => {
+    elements.add(findBestCardContainer(anchor));
   });
 
-  return Array.from(elements);
+  const visibleElements = Array.from(elements).filter(isVisibleCandidate);
+
+  return {
+    elements: visibleElements.length > 0 ? visibleElements : Array.from(elements),
+    selectorCounters,
+    anchorsFound: listingAnchors.length,
+    imageCardsFound: Array.from(elements).filter((element) => Boolean(element.querySelector("img"))).length,
+    visibleCandidates: visibleElements.length
+  };
+}
+
+function findBestCardContainer(element: Element) {
+  const candidates: Element[] = [element];
+  let current = element.parentElement;
+
+  for (let depth = 0; depth < 7 && current; depth += 1) {
+    candidates.push(current);
+    current = current.parentElement;
+  }
+
+  return candidates
+    .map((candidate) => ({ candidate, score: scoreCardCandidate(candidate) }))
+    .sort((a, b) => b.score - a.score)[0]?.candidate ?? element;
+}
+
+function scoreCardCandidate(element: Element) {
+  const text = element.textContent ?? "";
+  const rect = element.getBoundingClientRect();
+  let score = 0;
+
+  if (element.querySelector("a[href*='/items/'], a[href*='/item/']")) score += 5;
+  if (element.querySelector("img")) score += 4;
+  if (PRICE_PATTERN.test(text)) score += 3;
+  if (text.length > 8 && text.length < 900) score += 2;
+  if (rect.width >= 80 && rect.height >= 80) score += 2;
+  if (element.matches("[data-testid*='item-box'], [data-testid*='grid-item'], article, li")) score += 3;
+  if (text.length > 1500) score -= 5;
+
+  return score;
+}
+
+function isVisibleCandidate(element: Element) {
+  const rect = element.getBoundingClientRect();
+  const style = window.getComputedStyle(element);
+  return rect.width > 20 && rect.height > 20 && style.display !== "none" && style.visibility !== "hidden";
 }
 
 function parseListingCard(card: Element): ParsedVintedListing | null {
@@ -79,16 +153,25 @@ function findListingAnchor(card: Element) {
     return card;
   }
 
-  return Array.from(card.querySelectorAll<HTMLAnchorElement>("a[href]")).find((anchor) => isListingUrl(anchor.href));
+  const anchors = Array.from(card.querySelectorAll<HTMLAnchorElement>("a[href]")).filter((anchor) => isListingUrl(anchor.href));
+  return anchors.sort((a, b) => scoreAnchor(b) - scoreAnchor(a))[0];
 }
 
 function isListingUrl(url: string) {
-  return /\/items?\//i.test(url);
+  return /\/items?\//i.test(url) || /\/catalog\/\d+/i.test(url);
 }
 
 function extractListingId(url: string) {
-  const match = url.match(/\/items?\/(?<id>\d+)/i);
+  const match = url.match(/\/items?\/(?<id>\d+)/i) ?? url.match(/\/catalog\/(?<id>\d+)/i);
   return match?.groups?.id;
+}
+
+function scoreAnchor(anchor: HTMLAnchorElement) {
+  let score = 0;
+  if (anchor.querySelector("img")) score += 3;
+  if (anchor.href.includes("/items/")) score += 3;
+  if (anchor.textContent && PRICE_PATTERN.test(anchor.textContent)) score += 2;
+  return score;
 }
 
 function extractTitle(card: Element, anchor?: HTMLAnchorElement) {
@@ -101,13 +184,14 @@ function extractTitle(card: Element, anchor?: HTMLAnchorElement) {
 
     const text = normalizeText(element?.textContent);
 
-    if (text && !PRICE_PATTERN.test(text)) {
+    if (text && !PRICE_PATTERN.test(text) && text.length < 180) {
       return text;
     }
   }
 
   const ariaLabel = anchor?.getAttribute("aria-label");
-  return normalizeText(ariaLabel ?? anchor?.textContent);
+  const imageAlt = card.querySelector<HTMLImageElement>("img[alt]")?.alt;
+  return normalizeText(ariaLabel ?? imageAlt ?? anchor?.textContent);
 }
 
 function extractPrice(card: Element) {

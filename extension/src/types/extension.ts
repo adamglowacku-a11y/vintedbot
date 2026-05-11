@@ -53,6 +53,15 @@ export type ParserHealthState = {
   listingsFound: number;
   retries: number;
   selectorVersion: string;
+  scanDurationMs?: number;
+  selectorCounters?: Record<string, number>;
+  domHealth?: {
+    anchorsFound: number;
+    imageCardsFound: number;
+    visibleCandidates: number;
+    documentReadyState?: string;
+    bodyTextLength: number;
+  };
   error?: string;
   logs: ExtensionLog[];
 };
@@ -128,6 +137,7 @@ export type ExtensionMessage =
   | { type: "SET_LOCALE"; payload: { locale: SupportedLocale } }
   | { type: "REQUEST_REFRESH_LISTING"; payload: { listingId: string } }
   | { type: "CANCEL_ACTIVE_ACTION" }
+  | { type: "MANUAL_SCAN" }
   | { type: "SYNC_NOW" }
   | { type: "TOGGLE_AUTOMATION"; payload: { enabled: boolean } }
   | { type: "ADD_LOG"; payload: Omit<ExtensionLog, "id" | "createdAt"> };

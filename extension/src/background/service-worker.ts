@@ -157,6 +157,15 @@ async function handleMessage(message: ExtensionMessage): Promise<ExtensionRespon
       return { ok: true, data: state };
     }
 
+    case "MANUAL_SCAN": {
+      const result = await sendManualScanToVintedTab();
+      await addLog({
+        level: result.ok ? "info" : "warning",
+        message: result.ok ? "Ręczne skanowanie Vinted uruchomione." : `Ręczne skanowanie nieudane: ${result.error}`
+      });
+      return { ok: true, data: await getExtensionState() };
+    }
+
     case "SYNC_NOW": {
       const state = await syncSession();
       return { ok: true, data: state };
@@ -361,9 +370,7 @@ async function executeActiveJob(delayMs: number) {
 }
 
 async function sendRefreshToVintedTab(job: ListingActionJob, delayMs: number): Promise<{ ok: boolean; error?: string }> {
-  const tabs = await chrome.tabs.query({
-    url: ["https://*.vinted.com/*", "https://*.vinted.pl/*", "https://*.vinted.fr/*", "https://*.vinted.de/*"]
-  });
+  const tabs = await getVintedTabs();
   const tab = tabs.find((candidate) => candidate.url && (candidate.url.includes(job.listingId) || candidate.url.includes("vinted"))) ?? tabs[0];
 
   if (!tab?.id) {
@@ -382,7 +389,52 @@ async function sendRefreshToVintedTab(job: ListingActionJob, delayMs: number): P
     }
   };
 
-  return chrome.tabs.sendMessage(tab.id, message);
+  try {
+    return await chrome.tabs.sendMessage(tab.id, message);
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Content script Vinted nie odpowiedział."
+    };
+  }
+}
+
+async function sendManualScanToVintedTab(): Promise<{ ok: boolean; error?: string }> {
+  const tabs = await getVintedTabs();
+  const tab = tabs.find((candidate) => candidate.active) ?? tabs[0];
+
+  if (!tab?.id) {
+    return {
+      ok: false,
+      error: "Nie znaleziono otwartej karty Vinted."
+    };
+  }
+
+  try {
+    await chrome.tabs.sendMessage(tab.id, { type: "SCAN_NOW" } satisfies VintedContentMessage);
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Nie udało się uruchomić ręcznego skanowania."
+    };
+  }
+}
+
+async function getVintedTabs() {
+  return chrome.tabs.query({
+    url: [
+      "https://*.vinted.com/*",
+      "https://*.vinted.pl/*",
+      "https://*.vinted.fr/*",
+      "https://*.vinted.de/*",
+      "https://*.vinted.it/*",
+      "https://*.vinted.es/*",
+      "https://*.vinted.nl/*",
+      "https://*.vinted.be/*",
+      "https://*.vinted.co.uk/*"
+    ]
+  });
 }
 
 async function cancelActiveAction() {
