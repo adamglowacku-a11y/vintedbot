@@ -229,9 +229,9 @@ function sendWidgetMessage(message: ExtensionMessage): Promise<ExtensionResponse
     const timeout = window.setTimeout(() => {
       resolve({
         ok: false,
-        error: "Service worker nie odpowiedział na czas."
+        error: "Service worker nie odpowiedział na czas. Odśwież rozszerzenie w chrome://extensions i spróbuj ponownie."
       });
-    }, 2200);
+    }, 6500);
 
     try {
       chrome.runtime.sendMessage(message, (response: ExtensionResponse<ExtensionState> | undefined) => {

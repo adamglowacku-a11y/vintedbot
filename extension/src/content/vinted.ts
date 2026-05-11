@@ -104,7 +104,7 @@ function sendRuntimeMessage(message: ExtensionMessage): Promise<{ ok: boolean; e
   return new Promise((resolve) => {
     const timeout = window.setTimeout(() => {
       resolve({ ok: false, error: "Service worker content timeout." });
-    }, 2200);
+    }, 6500);
 
     try {
       chrome.runtime.sendMessage(message, (response: { ok?: boolean; error?: string } | undefined) => {

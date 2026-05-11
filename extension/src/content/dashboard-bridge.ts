@@ -188,7 +188,7 @@ function sendRuntimeMessage(message: ExtensionMessage): Promise<ExtensionRespons
         ok: false,
         error: "Extension service worker response timed out."
       });
-    }, 2500);
+    }, 6500);
 
     chrome.runtime.sendMessage(message, (response: ExtensionResponse<ExtensionState> | undefined) => {
       const runtimeError = chrome.runtime.lastError;

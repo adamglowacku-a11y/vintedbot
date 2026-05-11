@@ -1,4 +1,4 @@
-import { refreshButtonSelectors } from "@/parser/selectors";
+import { refreshButtonSelectors, refreshButtonTextKeywords } from "@/parser/selectors";
 
 type RefreshExecutionResult = {
   ok: boolean;
@@ -24,7 +24,7 @@ export async function executeRefreshClick(listingId: string, delayMs: number): P
     };
   }
 
-  if (button.disabled || button.getAttribute("aria-disabled") === "true") {
+  if ((button instanceof HTMLButtonElement && button.disabled) || button.getAttribute("aria-disabled") === "true") {
     return {
       ok: false,
       error: "Przycisk odświeżenia jest obecnie nieaktywny."
@@ -54,26 +54,44 @@ export async function executeRefreshClick(listingId: string, delayMs: number): P
 }
 
 function findListingCard(listingId: string) {
-  const anchor = Array.from(document.querySelectorAll<HTMLAnchorElement>("a[href*='/item'], a[href*='/items']")).find((element) =>
-    element.href.includes(`/items/${listingId}`) || element.href.includes(`/item/${listingId}`)
+  const anchor = Array.from(document.querySelectorAll<HTMLAnchorElement>("a[href*='/item'], a[href*='/items'], a[href*='/catalog/']")).find((element) =>
+    element.href.includes(`/items/${listingId}`) || element.href.includes(`/item/${listingId}`) || element.href.includes(`/catalog/${listingId}`)
   );
 
-  return anchor?.closest("[data-testid*='item-box'], article, div");
+  if (!anchor) {
+    return null;
+  }
+
+  let current: Element | null = anchor;
+
+  for (let depth = 0; current && depth < 8; depth += 1) {
+    if (findRefreshButton(current)) {
+      return current;
+    }
+
+    current = current.parentElement;
+  }
+
+  return anchor.closest("[data-testid*='item-box'], [data-testid*='itemBox'], [data-testid*='grid-item'], article, li, div");
 }
 
 function findRefreshButton(card: Element) {
   for (const selector of refreshButtonSelectors) {
-    const button = card.querySelector<HTMLButtonElement>(selector);
+    const button = card.querySelector<HTMLButtonElement | HTMLAnchorElement>(selector);
 
     if (button) {
       return button;
     }
   }
 
-  return null;
+  return Array.from(card.querySelectorAll<HTMLButtonElement | HTMLAnchorElement>("button, a, [role='button']")).find((element) => {
+    const text = element.textContent?.replace(/\s+/g, " ").trim().toLowerCase() ?? "";
+    const label = `${element.getAttribute("aria-label") ?? ""} ${element.getAttribute("title") ?? ""}`.toLowerCase();
+    return refreshButtonTextKeywords.some((keyword) => text.includes(keyword) || label.includes(keyword));
+  }) ?? null;
 }
 
-function isVisible(element: HTMLElement) {
+function isVisible(element: HTMLElement | HTMLAnchorElement) {
   const rect = element.getBoundingClientRect();
   const style = window.getComputedStyle(element);
   return rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.display !== "none";

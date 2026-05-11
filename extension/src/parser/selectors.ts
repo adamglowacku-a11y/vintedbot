@@ -48,8 +48,35 @@ export const priceSelectors = [
 export const refreshButtonSelectors = [
   "button[aria-label*='refresh' i]",
   "button[aria-label*='odświe' i]",
+  "button[aria-label*='podbij' i]",
+  "button[aria-label*='wyróż' i]",
+  "button[aria-label*='promuj' i]",
+  "button[aria-label*='boost' i]",
+  "button[aria-label*='bump' i]",
   "button[aria-label*='erneuern' i]",
-  "button[data-testid*='refresh' i]"
+  "button[data-testid*='refresh' i]",
+  "button[data-testid*='bump' i]",
+  "button[data-testid*='promote' i]",
+  "a[href*='bump']",
+  "a[href*='promote']"
+];
+
+export const refreshButtonTextKeywords = [
+  "odśwież",
+  "odswiez",
+  "podbij",
+  "wyróżnij",
+  "wyroznij",
+  "promuj",
+  "boost",
+  "bump",
+  "refresh",
+  "promote",
+  "erneuern",
+  "hervorheben",
+  "mettre en avant",
+  "relancer",
+  "destacar"
 ];
 
 export const statusKeywords = {

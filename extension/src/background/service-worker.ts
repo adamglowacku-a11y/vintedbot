@@ -90,8 +90,6 @@ function isAllowedExternalOrigin(value?: string) {
 }
 
 async function handleMessage(message: ExtensionMessage): Promise<ExtensionResponse<ExtensionState>> {
-  await recoverDueAction();
-
   switch (message.type) {
     case "PING": {
       const state = await updateExtensionState((currentState) => ({
@@ -112,11 +110,10 @@ async function handleMessage(message: ExtensionMessage): Promise<ExtensionRespon
       const state = await getExtensionState();
 
       if (state.auth && isSessionExpiring(state.auth, 0)) {
-        return {
-          ok: true,
-          data: await syncSession()
-        };
+        void syncSession();
       }
+
+      void recoverDueAction();
 
       return {
         ok: true,
@@ -242,6 +239,8 @@ async function handleMessage(message: ExtensionMessage): Promise<ExtensionRespon
       return { ok: true, data: await getExtensionState() };
     }
   }
+
+  await recoverDueAction();
 }
 
 async function enqueueRefreshJob(listingId: string) {

@@ -2,6 +2,7 @@ import {
   listingCardSelectors,
   priceSelectors,
   refreshButtonSelectors,
+  refreshButtonTextKeywords,
   SELECTOR_VERSION,
   statusKeywords,
   titleSelectors
@@ -270,7 +271,13 @@ function extractImage(card: Element) {
 }
 
 function hasRefreshButton(card: Element) {
-  return refreshButtonSelectors.some((selector) => Boolean(card.querySelector(selector)));
+  if (refreshButtonSelectors.some((selector) => Boolean(card.querySelector(selector)))) {
+    return true;
+  }
+
+  return Array.from(card.querySelectorAll("button, a, [role='button']")).some((element) =>
+    refreshButtonTextKeywords.some((keyword) => normalizeText(element.textContent)?.toLowerCase().includes(keyword))
+  );
 }
 
 function looksLikeProfileListingCard(card: Element) {
