@@ -26,14 +26,10 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [message, setMessage] = useState<string | null>(searchParams.get("message"));
   const redirectTo = getSafeRedirectTo(searchParams.get("redirectTo"));
 
-  function getAppUrl() {
-    const configuredUrl = process.env.NEXT_PUBLIC_APP_URL;
-
-    if (!configuredUrl || configuredUrl.includes("localhost") || configuredUrl.includes("127.0.0.1")) {
-      return window.location.origin;
-    }
-
-    return configuredUrl.replace(/\/$/, "");
+  function getAuthCallbackUrl() {
+    const callbackUrl = new URL("/auth/callback", window.location.origin);
+    callbackUrl.searchParams.set("next", redirectTo);
+    return callbackUrl.toString();
   }
 
   function getSafeRedirectTo(value: string | null): SafeAuthRoute {
@@ -61,7 +57,7 @@ export function AuthForm({ mode }: AuthFormProps) {
               data: {
                 full_name: name
               },
-              emailRedirectTo: `${getAppUrl()}/auth/callback?next=${redirectTo}`
+              emailRedirectTo: getAuthCallbackUrl()
             }
           });
 
@@ -89,7 +85,7 @@ export function AuthForm({ mode }: AuthFormProps) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${getAppUrl()}/auth/callback?next=${redirectTo}`
+        redirectTo: getAuthCallbackUrl()
       }
     });
 
