@@ -9,6 +9,12 @@ export async function middleware(request: NextRequest) {
     request
   });
 
+  if (request.nextUrl.pathname === "/" && hasOAuthCallbackParams(request.nextUrl)) {
+    const callbackUrl = request.nextUrl.clone();
+    callbackUrl.pathname = "/auth/callback";
+    return NextResponse.redirect(callbackUrl);
+  }
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -53,6 +59,14 @@ export async function middleware(request: NextRequest) {
   }
 
   return response;
+}
+
+function hasOAuthCallbackParams(url: NextRequest["nextUrl"]) {
+  return (
+    url.searchParams.has("code") ||
+    url.searchParams.has("error") ||
+    url.searchParams.has("error_description")
+  );
 }
 
 export const config = {
