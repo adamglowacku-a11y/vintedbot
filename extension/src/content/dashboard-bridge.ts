@@ -20,6 +20,11 @@ type DashboardBridgeMessage =
     }
   | {
       source: "vintedflow-dashboard";
+      type: "TOGGLE_AUTOMATION";
+      payload: { enabled: boolean };
+    }
+  | {
+      source: "vintedflow-dashboard";
       type:
         | "CHECK_EXTENSION"
         | "GET_EXTENSION_STATE"
@@ -85,6 +90,18 @@ window.addEventListener("message", (event: MessageEvent<DashboardBridgeMessage>)
     return;
   }
 
+  if (event.data.type === "TOGGLE_AUTOMATION") {
+    void forwardToExtension(
+      {
+        type: "TOGGLE_AUTOMATION",
+        payload: event.data.payload
+      },
+      "EXTENSION_STATE",
+      event.origin
+    );
+    return;
+  }
+
   if (event.data.type === "CANCEL_ACTIVE_ACTION") {
     void forwardToExtension({ type: "CANCEL_ACTIVE_ACTION" }, "EXTENSION_STATE", event.origin);
     return;
@@ -120,7 +137,7 @@ function isAllowedDashboardOrigin(origin: string) {
 }
 
 async function emitReady(origin: string) {
-  const response = await sendRuntimeMessage({ type: "PING" });
+  const response = await sendRuntimeMessageWithRetry({ type: "PING" });
 
   window.postMessage(
     {
@@ -133,7 +150,7 @@ async function emitReady(origin: string) {
 }
 
 async function forwardToExtension(message: ExtensionMessage, type: string, origin: string) {
-  const response = await sendRuntimeMessage(message);
+  const response = await sendRuntimeMessageWithRetry(message);
 
   window.postMessage(
     {
@@ -145,10 +162,37 @@ async function forwardToExtension(message: ExtensionMessage, type: string, origi
   );
 }
 
+async function sendRuntimeMessageWithRetry(message: ExtensionMessage): Promise<ExtensionResponse<ExtensionState>> {
+  let response: ExtensionResponse<ExtensionState> = {
+    ok: false,
+    error: "Extension service worker did not respond."
+  };
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    response = await sendRuntimeMessage(message);
+
+    if (response.ok) {
+      return response;
+    }
+
+    await wait(200 + attempt * 350);
+  }
+
+  return response;
+}
+
 function sendRuntimeMessage(message: ExtensionMessage): Promise<ExtensionResponse<ExtensionState>> {
   return new Promise((resolve) => {
+    const timeout = window.setTimeout(() => {
+      resolve({
+        ok: false,
+        error: "Extension service worker response timed out."
+      });
+    }, 2500);
+
     chrome.runtime.sendMessage(message, (response: ExtensionResponse<ExtensionState> | undefined) => {
       const runtimeError = chrome.runtime.lastError;
+      window.clearTimeout(timeout);
 
       if (runtimeError) {
         resolve({
@@ -166,4 +210,8 @@ function sendRuntimeMessage(message: ExtensionMessage): Promise<ExtensionRespons
       );
     });
   });
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }

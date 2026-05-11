@@ -1,4 +1,4 @@
-import type { ExtensionMessage, ExtensionResponse, ExtensionState } from "@/types/extension";
+import type { ExtensionMessage, ExtensionResponse, ExtensionState, ParsedVintedListing } from "@/types/extension";
 
 type WidgetScanResult = {
   listings: Array<unknown>;
@@ -33,6 +33,10 @@ export function mountVintedFlowWidget(controller: WidgetController) {
   const close = root.querySelector<HTMLButtonElement>("[data-vf-close]");
   const scan = root.querySelector<HTMLButtonElement>("[data-vf-scan]");
   const connect = root.querySelector<HTMLButtonElement>("[data-vf-connect]");
+  const sync = root.querySelector<HTMLButtonElement>("[data-vf-sync-now]");
+  const monitor = root.querySelector<HTMLButtonElement>("[data-vf-monitor]");
+  const refresh = root.querySelector<HTMLButtonElement>("[data-vf-refresh-first]");
+  const cancel = root.querySelector<HTMLButtonElement>("[data-vf-cancel]");
 
   launcher?.addEventListener("click", () => {
     panel?.classList.toggle("is-open");
@@ -45,6 +49,22 @@ export function mountVintedFlowWidget(controller: WidgetController) {
 
   scan?.addEventListener("click", () => {
     void scanAndRefresh(root, controller, "manual");
+  });
+
+  sync?.addEventListener("click", () => {
+    void syncAndRefresh(root);
+  });
+
+  monitor?.addEventListener("click", () => {
+    void toggleMonitoring(root);
+  });
+
+  refresh?.addEventListener("click", () => {
+    void refreshFirstListing(root);
+  });
+
+  cancel?.addEventListener("click", () => {
+    void sendActionAndRefresh(root, { type: "CANCEL_ACTIVE_ACTION" }, "Anuluję akcję...");
   });
 
   connect?.addEventListener("click", () => {
@@ -68,6 +88,7 @@ async function scanAndRefresh(root: HTMLElement, controller: WidgetController, r
   setText(root, "vf-parser", "Skanuję...");
   setText(root, "vf-error", "");
 
+  await wakeExtension(root);
   const scanResult = await Promise.resolve(controller.scanNow());
 
   if (scanResult?.health) {
@@ -83,7 +104,7 @@ async function scanAndRefresh(root: HTMLElement, controller: WidgetController, r
 }
 
 async function refreshWidgetState(root: HTMLElement) {
-  const response = await sendWidgetMessage({ type: "GET_STATE" });
+  const response = await sendWidgetMessageWithRetry({ type: "GET_STATE" });
   const state = response.data;
 
   if (!response.ok) {
@@ -98,7 +119,82 @@ async function refreshWidgetState(root: HTMLElement) {
   setText(root, "vf-parser", state?.parserHealth.status ?? "idle");
   setText(root, "vf-vinted", state?.vinted.isOnVinted ? "Wykryto" : "Oczekuje");
   setText(root, "vf-sync", state?.sync.status ?? "idle");
+  setText(root, "vf-action", getActionLabel(state));
+  setText(root, "vf-refreshable", String((state?.parsedListings ?? []).filter((listing) => listing.hasRefreshButton).length));
+  setText(root, "vf-monitor-state", state?.automationEnabled ? "Monitoring: ON" : "Monitoring: OFF");
   setText(root, "vf-error", "");
+}
+
+async function wakeExtension(root: HTMLElement) {
+  const response = await sendWidgetMessageWithRetry({ type: "PING" }, 2);
+
+  if (!response.ok) {
+    setText(root, "vf-error", response.error ?? "Service worker rozszerzenia nie odpowiedział.");
+  }
+}
+
+async function syncAndRefresh(root: HTMLElement) {
+  await sendActionAndRefresh(root, { type: "SYNC_NOW" }, "Synchronizuję...");
+}
+
+async function toggleMonitoring(root: HTMLElement) {
+  const stateResponse = await sendWidgetMessageWithRetry({ type: "GET_STATE" });
+  const enabled = !stateResponse.data?.automationEnabled;
+  await sendActionAndRefresh(root, { type: "TOGGLE_AUTOMATION", payload: { enabled } }, enabled ? "Włączam monitoring..." : "Wyłączam monitoring...");
+}
+
+async function refreshFirstListing(root: HTMLElement) {
+  setText(root, "vf-action", "Szukam oferty...");
+  const stateResponse = await sendWidgetMessageWithRetry({ type: "GET_STATE" });
+  const listing = findRefreshableListing(stateResponse.data?.parsedListings ?? []);
+
+  if (!listing) {
+    setText(root, "vf-error", "Brak aktywnej oferty z wykrytym przyciskiem odświeżenia.");
+    setText(root, "vf-action", "Brak akcji");
+    return;
+  }
+
+  await sendActionAndRefresh(
+    root,
+    {
+      type: "REQUEST_REFRESH_LISTING",
+      payload: { listingId: listing.id }
+    },
+    `Kolejkuję: ${listing.title}`
+  );
+}
+
+async function sendActionAndRefresh(root: HTMLElement, message: ExtensionMessage, pendingText: string) {
+  setText(root, "vf-action", pendingText);
+  setText(root, "vf-error", "");
+
+  const response = await sendWidgetMessageWithRetry(message);
+
+  if (!response.ok) {
+    setText(root, "vf-error", response.error ?? "Akcja nie powiodła się.");
+  }
+
+  await refreshWidgetState(root);
+}
+
+function findRefreshableListing(listings: ParsedVintedListing[]) {
+  return listings.find((listing) => listing.status === "active" && listing.hasRefreshButton) ?? listings.find((listing) => listing.hasRefreshButton);
+}
+
+function getActionLabel(state?: ExtensionState) {
+  if (!state) {
+    return "Brak danych";
+  }
+
+  if (state.actionQueue.activeJob) {
+    return `${state.actionQueue.activeJob.status}: ${state.actionQueue.activeJob.listingTitle}`;
+  }
+
+  if (state.actionQueue.cooldownUntil && new Date(state.actionQueue.cooldownUntil).getTime() > Date.now()) {
+    return `Cooldown do ${new Date(state.actionQueue.cooldownUntil).toLocaleTimeString("pl")}`;
+  }
+
+  return "Brak aktywnej akcji";
 }
 
 function setText(root: HTMLElement, key: string, value: string) {
@@ -109,11 +205,38 @@ function setText(root: HTMLElement, key: string, value: string) {
   }
 }
 
+async function sendWidgetMessageWithRetry(message: ExtensionMessage, attempts = 3): Promise<ExtensionResponse<ExtensionState>> {
+  let lastResponse: ExtensionResponse<ExtensionState> = {
+    ok: false,
+    error: "Nie udało się połączyć z service workerem."
+  };
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    lastResponse = await sendWidgetMessage(message);
+
+    if (lastResponse.ok) {
+      return lastResponse;
+    }
+
+    await wait(180 + attempt * 320);
+  }
+
+  return lastResponse;
+}
+
 function sendWidgetMessage(message: ExtensionMessage): Promise<ExtensionResponse<ExtensionState>> {
   return new Promise((resolve) => {
+    const timeout = window.setTimeout(() => {
+      resolve({
+        ok: false,
+        error: "Service worker nie odpowiedział na czas."
+      });
+    }, 2200);
+
     try {
       chrome.runtime.sendMessage(message, (response: ExtensionResponse<ExtensionState> | undefined) => {
         const runtimeError = chrome.runtime.lastError;
+        window.clearTimeout(timeout);
 
         if (runtimeError) {
           resolve({ ok: false, error: runtimeError.message });
@@ -123,12 +246,17 @@ function sendWidgetMessage(message: ExtensionMessage): Promise<ExtensionResponse
         resolve(response ?? { ok: false, error: "Brak odpowiedzi service workera." });
       });
     } catch (error) {
+      window.clearTimeout(timeout);
       resolve({
         ok: false,
         error: error instanceof Error ? error.message : "Nie udało się połączyć z rozszerzeniem."
       });
     }
   });
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 function createWidgetMarkup() {
@@ -150,10 +278,16 @@ function createWidgetMarkup() {
         <span>Vinted <strong data-vf-vinted>...</strong></span>
         <span>Oferty <strong data-vf-listings>0</strong></span>
         <span>Parser <strong data-vf-parser>idle</strong></span>
+        <span>Do odświeżenia <strong data-vf-refreshable>0</strong></span>
+        <span>Akcja <strong data-vf-action>Brak</strong></span>
       </div>
       <p class="vf-muted">Panel zostaje na stronie profilu i nie zamyka się przy pracy z kartą Vinted.</p>
       <div class="vf-actions">
         <button data-vf-scan type="button">Skanuj profil</button>
+        <button data-vf-refresh-first type="button">Odśwież 1 ofertę</button>
+        <button data-vf-sync-now type="button">Synchronizuj</button>
+        <button data-vf-monitor type="button"><span data-vf-monitor-state>Monitoring</span></button>
+        <button data-vf-cancel type="button">Anuluj akcję</button>
         <button data-vf-connect type="button">Połącz dashboard</button>
       </div>
       <p class="vf-sync">Sync: <strong data-vf-sync>idle</strong></p>

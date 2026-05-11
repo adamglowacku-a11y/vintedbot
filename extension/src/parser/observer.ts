@@ -123,14 +123,52 @@ export function startParserObserver({ retryLimit = 4, debounceMs = 650 }: Parser
 export type ParserObserverController = ReturnType<typeof startParserObserver>;
 
 async function safeRuntimeSend(message: ExtensionMessage) {
-  try {
-    await chrome.runtime.sendMessage(message);
-  } catch (error) {
-    console.warn(
-      "[VintedFlow parser runtime]",
-      error instanceof Error ? error.message : "Parser nie połączył się z service workerem."
-    );
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const response = await sendRuntimeMessage(message);
+
+    if (response.ok) {
+      return;
+    }
+
+    if (attempt === 2) {
+      console.warn("[VintedFlow parser runtime]", response.error ?? "Parser nie połączył się z service workerem.");
+      return;
+    }
+
+    await wait(180 + attempt * 320);
   }
+}
+
+function sendRuntimeMessage(message: ExtensionMessage): Promise<{ ok: boolean; error?: string }> {
+  return new Promise((resolve) => {
+    const timeout = window.setTimeout(() => {
+      resolve({ ok: false, error: "Service worker parser timeout." });
+    }, 2200);
+
+    try {
+      chrome.runtime.sendMessage(message, (response: { ok?: boolean; error?: string } | undefined) => {
+        const runtimeError = chrome.runtime.lastError;
+        window.clearTimeout(timeout);
+
+        if (runtimeError) {
+          resolve({ ok: false, error: runtimeError.message });
+          return;
+        }
+
+        resolve({ ok: response?.ok !== false, error: response?.error });
+      });
+    } catch (error) {
+      window.clearTimeout(timeout);
+      resolve({
+        ok: false,
+        error: error instanceof Error ? error.message : "Nie udało się wysłać wyniku parsera."
+      });
+    }
+  });
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 function createLog(

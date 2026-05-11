@@ -5,6 +5,8 @@ import { getExtensionState, resetExtensionState, setExtensionState, updateExtens
 import { isSessionExpiring, refreshSupabaseSession, verifySupabaseSession } from "@/lib/supabase-auth";
 import type { ExtensionMessage, ExtensionResponse, ExtensionState, ListingActionJob, VintedContentMessage } from "@/types/extension";
 
+const ACTION_ALARM_PREFIX = "vintedflow-action-";
+
 chrome.runtime.onInstalled.addListener(async () => {
   const state = await getExtensionState();
   await setExtensionState({
@@ -24,6 +26,11 @@ chrome.alarms.create("vintedflow-session-sync", {
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "vintedflow-session-sync") {
     void syncSession();
+    return;
+  }
+
+  if (alarm.name.startsWith(ACTION_ALARM_PREFIX)) {
+    void executeActiveJob(0);
   }
 });
 
@@ -83,6 +90,8 @@ function isAllowedExternalOrigin(value?: string) {
 }
 
 async function handleMessage(message: ExtensionMessage): Promise<ExtensionResponse<ExtensionState>> {
+  await recoverDueAction();
+
   switch (message.type) {
     case "PING": {
       const state = await updateExtensionState((currentState) => ({
@@ -324,9 +333,7 @@ async function processQueue() {
     }
   }));
 
-  actionTimer = setTimeout(() => {
-    void executeActiveJob(delayMs);
-  }, delayMs);
+  await scheduleActionAlarm(job.id, scheduledFor);
 }
 
 async function executeActiveJob(delayMs: number) {
@@ -369,15 +376,15 @@ async function executeActiveJob(delayMs: number) {
         activeJob: {
           ...runningJob,
           status: "waiting",
+          scheduledFor: new Date(Date.now() + REFRESH_SAFETY.retryBackoffMs + getRandomHumanDelay()).toISOString(),
           error: result.error,
           updatedAt: new Date().toISOString()
         }
       }
     }));
 
-    actionTimer = setTimeout(() => {
-      void executeActiveJob(REFRESH_SAFETY.retryBackoffMs + getRandomHumanDelay());
-    }, REFRESH_SAFETY.retryBackoffMs);
+    const nextState = await getExtensionState();
+    await scheduleActionAlarm(runningJob.id, nextState.actionQueue.activeJob?.scheduledFor ?? new Date(Date.now() + REFRESH_SAFETY.retryBackoffMs).toISOString());
     return;
   }
 
@@ -509,8 +516,32 @@ async function cancelActiveAction() {
     };
   });
 
+  if (state.actionQueue.history[0]?.id) {
+    await chrome.alarms.clear(`${ACTION_ALARM_PREFIX}${state.actionQueue.history[0].id}`);
+  }
+
   await addLog({ level: "warning", message: "Anulowano aktywną akcję odświeżania." });
   return state;
+}
+
+async function scheduleActionAlarm(jobId: string, scheduledFor: string) {
+  await chrome.alarms.clear(`${ACTION_ALARM_PREFIX}${jobId}`);
+  await chrome.alarms.create(`${ACTION_ALARM_PREFIX}${jobId}`, {
+    when: Math.max(Date.now() + 250, new Date(scheduledFor).getTime())
+  });
+}
+
+async function recoverDueAction() {
+  const state = await getExtensionState();
+  const job = state.actionQueue.activeJob;
+
+  if (!job || job.status !== "waiting" || !job.scheduledFor) {
+    return;
+  }
+
+  if (new Date(job.scheduledFor).getTime() <= Date.now()) {
+    void executeActiveJob(0);
+  }
 }
 
 async function syncSession() {
