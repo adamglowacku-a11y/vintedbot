@@ -41,13 +41,30 @@ Create `.env.local` from `.env.example` before wiring Supabase auth or database 
 
 ## Supabase Auth
 
-Enable Email and Google providers in Supabase, then add the following redirect URL:
+Enable Email and Google providers in Supabase. For Google OAuth, create OAuth credentials in Google Cloud and paste the
+Client ID / Client Secret into Supabase Auth Providers.
+
+In Google Cloud OAuth Client settings, add the Supabase callback URL as an authorized redirect URI:
+
+```text
+https://adjxvqcqwtwwrwximytc.supabase.co/auth/v1/callback
+```
+
+Add these redirect URLs in Supabase Auth URL Configuration:
 
 ```text
 http://localhost:3000/auth/callback
+https://vintly.live/auth/callback
+https://www.vintly.live/auth/callback
 ```
 
-For production, add the matching Vercel URL callback as well.
+If you test on a Vercel preview domain, add that preview callback too:
+
+```text
+https://your-preview-domain.vercel.app/auth/callback
+```
+
+Set `NEXT_PUBLIC_APP_URL` to `http://localhost:3000` locally and `https://vintly.live` in production.
 
 ## Chrome Extension MVP
 

@@ -10,6 +10,7 @@ import { Input, Label } from "@/components/ui/input";
 import { createSupabaseBrowserClient } from "@/lib/supabase";
 
 type AuthMode = "login" | "register";
+type SafeAuthRoute = "/dashboard" | "/extension/connect" | Route;
 
 type AuthFormProps = {
   mode: AuthMode;
@@ -22,16 +23,22 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(searchParams.get("message"));
   const redirectTo = getSafeRedirectTo(searchParams.get("redirectTo"));
 
   function getAppUrl() {
-    return process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin;
+    const configuredUrl = process.env.NEXT_PUBLIC_APP_URL;
+
+    if (!configuredUrl || configuredUrl.includes("localhost") || configuredUrl.includes("127.0.0.1")) {
+      return window.location.origin;
+    }
+
+    return configuredUrl.replace(/\/$/, "");
   }
 
-  function getSafeRedirectTo(value: string | null): Route {
-    if (value?.startsWith("/dashboard")) {
-      return value as Route;
+  function getSafeRedirectTo(value: string | null): SafeAuthRoute {
+    if (value?.startsWith("/dashboard") || value === "/extension/connect") {
+      return value as SafeAuthRoute;
     }
 
     return "/dashboard";
@@ -124,14 +131,14 @@ export function AuthForm({ mode }: AuthFormProps) {
         ) : null}
 
         <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">Email</Label>
           <div className="relative">
             <Mail className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               className="pl-11"
               id="email"
               onChange={(event) => setEmail(event.target.value)}
-                placeholder="sprzedawca@example.com"
+              placeholder="sprzedawca@example.com"
               required
               type="email"
               value={email}
@@ -140,7 +147,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         </div>
 
         <div className="space-y-2">
-            <Label htmlFor="password">Hasło</Label>
+          <Label htmlFor="password">Hasło</Label>
           <div className="relative">
             <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
