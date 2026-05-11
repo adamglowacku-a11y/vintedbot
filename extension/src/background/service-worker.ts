@@ -1,8 +1,9 @@
 import { addLog } from "@/lib/logger";
+import { getRandomHumanDelay, isCooldownActive, REFRESH_SAFETY } from "@/actions/safety";
 import { DEFAULT_STATE } from "@/lib/constants";
 import { getExtensionState, resetExtensionState, setExtensionState, updateExtensionState } from "@/lib/storage";
-import { verifySupabaseSession } from "@/lib/supabase-auth";
-import type { ExtensionMessage, ExtensionResponse, ExtensionState } from "@/types/extension";
+import { isSessionExpiring, refreshSupabaseSession, verifySupabaseSession } from "@/lib/supabase-auth";
+import type { ExtensionMessage, ExtensionResponse, ExtensionState, ListingActionJob, VintedContentMessage } from "@/types/extension";
 
 chrome.runtime.onInstalled.addListener(async () => {
   const state = await getExtensionState();
@@ -36,12 +37,38 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendRe
   return true;
 });
 
+let actionTimer: ReturnType<typeof setTimeout> | undefined;
+
 async function handleMessage(message: ExtensionMessage): Promise<ExtensionResponse<ExtensionState>> {
   switch (message.type) {
-    case "GET_STATE": {
+    case "PING": {
+      const state = await updateExtensionState((currentState) => ({
+        ...currentState,
+        sync: {
+          ...currentState.sync,
+          lastHeartbeatAt: new Date().toISOString()
+        }
+      }));
+
       return {
         ok: true,
-        data: await getExtensionState()
+        data: state
+      };
+    }
+
+    case "GET_STATE": {
+      const state = await getExtensionState();
+
+      if (state.auth && isSessionExpiring(state.auth, 0)) {
+        return {
+          ok: true,
+          data: await syncSession()
+        };
+      }
+
+      return {
+        ok: true,
+        data: state
       };
     }
 
@@ -80,12 +107,53 @@ async function handleMessage(message: ExtensionMessage): Promise<ExtensionRespon
       return { ok: true, data: state };
     }
 
+    case "DASHBOARD_LOGOUT": {
+      const state = await resetExtensionState();
+      await addLog({ level: "info", message: "Dashboard logout synced to extension." });
+      return { ok: true, data: state };
+    }
+
     case "VINTED_PAGE_STATUS": {
       const state = await updateExtensionState((currentState) => ({
         ...currentState,
         vinted: message.payload
       }));
 
+      return { ok: true, data: state };
+    }
+
+    case "PARSER_RESULT": {
+      const state = await updateExtensionState((currentState) => ({
+        ...currentState,
+        parsedListings: message.payload.listings,
+        parserHealth: {
+          ...message.payload.health,
+          logs: [...message.payload.health.logs, ...currentState.parserHealth.logs].slice(0, 60)
+        },
+        logs: [...message.payload.health.logs, ...currentState.logs].slice(0, 80)
+      }));
+
+      return { ok: true, data: state };
+    }
+
+    case "SET_LOCALE": {
+      const state = await updateExtensionState((currentState) => ({
+        ...currentState,
+        locale: message.payload.locale
+      }));
+
+      await addLog({ level: "info", message: `Locale changed to ${message.payload.locale}.` });
+      return { ok: true, data: state };
+    }
+
+    case "REQUEST_REFRESH_LISTING": {
+      const state = await enqueueRefreshJob(message.payload.listingId);
+      void processQueue();
+      return { ok: true, data: state };
+    }
+
+    case "CANCEL_ACTIVE_ACTION": {
+      const state = await cancelActiveAction();
       return { ok: true, data: state };
     }
 
@@ -115,6 +183,241 @@ async function handleMessage(message: ExtensionMessage): Promise<ExtensionRespon
   }
 }
 
+async function enqueueRefreshJob(listingId: string) {
+  const state = await getExtensionState();
+  const listing = state.parsedListings.find((item) => item.id === listingId);
+
+  if (!listing) {
+    throw new Error("Nie znaleziono oferty w aktualnie sparsowanych danych.");
+  }
+
+  if (!listing.hasRefreshButton) {
+    throw new Error("Parser nie wykrył przycisku odświeżania dla tej oferty.");
+  }
+
+  if (state.actionQueue.activeJob || state.actionQueue.pending.length > 0) {
+    throw new Error("Jedna akcja jest już w toku. Poczekaj na zakończenie lub anuluj ją.");
+  }
+
+  if (isCooldownActive(state.actionQueue.cooldownUntil)) {
+    throw new Error("Cooldown odświeżania jest aktywny. Spróbuj ponownie za chwilę.");
+  }
+
+  const now = new Date().toISOString();
+  const job: ListingActionJob = {
+    id: crypto.randomUUID(),
+    type: "refreshListing",
+    listingId,
+    listingTitle: listing.title,
+    listingUrl: listing.url,
+    status: "queued",
+    attempts: 0,
+    maxRetries: REFRESH_SAFETY.retryLimit,
+    createdAt: now,
+    updatedAt: now
+  };
+
+  const nextState = await updateExtensionState((currentState) => ({
+    ...currentState,
+    actionQueue: {
+      ...currentState.actionQueue,
+      pending: [job],
+      isProcessing: true
+    }
+  }));
+
+  await addLog({
+    level: "info",
+    message: `Dodano odświeżanie oferty do kolejki: ${listing.title}.`,
+    context: { listingId }
+  });
+
+  return nextState;
+}
+
+async function processQueue() {
+  const state = await getExtensionState();
+
+  if (state.actionQueue.activeJob || state.actionQueue.pending.length === 0) {
+    return;
+  }
+
+  if (isCooldownActive(state.actionQueue.cooldownUntil)) {
+    await updateExtensionState((currentState) => ({
+      ...currentState,
+      actionQueue: {
+        ...currentState.actionQueue,
+        isProcessing: false
+      }
+    }));
+    return;
+  }
+
+  const [job] = state.actionQueue.pending;
+  const delayMs = getRandomHumanDelay();
+  const scheduledFor = new Date(Date.now() + delayMs).toISOString();
+
+  await updateExtensionState((currentState) => ({
+    ...currentState,
+    actionQueue: {
+      ...currentState.actionQueue,
+      activeJob: {
+        ...job,
+        status: "waiting",
+        scheduledFor,
+        updatedAt: new Date().toISOString()
+      },
+      pending: currentState.actionQueue.pending.slice(1),
+      isProcessing: true
+    }
+  }));
+
+  actionTimer = setTimeout(() => {
+    void executeActiveJob(delayMs);
+  }, delayMs);
+}
+
+async function executeActiveJob(delayMs: number) {
+  const state = await getExtensionState();
+  const job = state.actionQueue.activeJob;
+
+  if (!job || job.status === "cancelled") {
+    return;
+  }
+
+  const runningJob: ListingActionJob = {
+    ...job,
+    attempts: job.attempts + 1,
+    status: "running",
+    startedAt: job.startedAt ?? new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  await updateExtensionState((currentState) => ({
+    ...currentState,
+    actionQueue: {
+      ...currentState.actionQueue,
+      activeJob: runningJob
+    }
+  }));
+
+  const result = await sendRefreshToVintedTab(runningJob, delayMs);
+
+  if (!result.ok && runningJob.attempts <= runningJob.maxRetries) {
+    await addLog({
+      level: "warning",
+      message: `Odświeżenie nieudane, ponawiam próbę ${runningJob.attempts}/${runningJob.maxRetries}.`,
+      context: { listingId: runningJob.listingId }
+    });
+
+    await updateExtensionState((currentState) => ({
+      ...currentState,
+      actionQueue: {
+        ...currentState.actionQueue,
+        activeJob: {
+          ...runningJob,
+          status: "waiting",
+          error: result.error,
+          updatedAt: new Date().toISOString()
+        }
+      }
+    }));
+
+    actionTimer = setTimeout(() => {
+      void executeActiveJob(REFRESH_SAFETY.retryBackoffMs + getRandomHumanDelay());
+    }, REFRESH_SAFETY.retryBackoffMs);
+    return;
+  }
+
+  const completedAt = new Date().toISOString();
+  const completedJob: ListingActionJob = {
+    ...runningJob,
+    status: result.ok ? "succeeded" : "failed",
+    completedAt,
+    updatedAt: completedAt,
+    error: result.error
+  };
+  const cooldownUntil = result.ok ? new Date(Date.now() + REFRESH_SAFETY.cooldownMs).toISOString() : state.actionQueue.cooldownUntil;
+
+  const nextState = await updateExtensionState((currentState) => ({
+    ...currentState,
+    actionQueue: {
+      ...currentState.actionQueue,
+      activeJob: null,
+      isProcessing: false,
+      lastRefreshAt: result.ok ? completedAt : currentState.actionQueue.lastRefreshAt,
+      cooldownUntil,
+      history: [completedJob, ...currentState.actionQueue.history].slice(0, 40)
+    }
+  }));
+
+  await addLog({
+    level: result.ok ? "info" : "error",
+    message: result.ok ? `Odświeżono ofertę: ${completedJob.listingTitle}.` : `Odświeżenie nieudane: ${result.error}`,
+    context: { listingId: completedJob.listingId }
+  });
+
+  return nextState;
+}
+
+async function sendRefreshToVintedTab(job: ListingActionJob, delayMs: number): Promise<{ ok: boolean; error?: string }> {
+  const tabs = await chrome.tabs.query({
+    url: ["https://*.vinted.com/*", "https://*.vinted.pl/*", "https://*.vinted.fr/*", "https://*.vinted.de/*"]
+  });
+  const tab = tabs.find((candidate) => candidate.url && (candidate.url.includes(job.listingId) || candidate.url.includes("vinted"))) ?? tabs[0];
+
+  if (!tab?.id) {
+    return {
+      ok: false,
+      error: "Nie znaleziono aktywnej karty Vinted z załadowanym content script."
+    };
+  }
+
+  const message: VintedContentMessage = {
+    type: "EXECUTE_REFRESH_CLICK",
+    payload: {
+      listingId: job.listingId,
+      jobId: job.id,
+      delayMs
+    }
+  };
+
+  return chrome.tabs.sendMessage(tab.id, message);
+}
+
+async function cancelActiveAction() {
+  if (actionTimer) {
+    clearTimeout(actionTimer);
+  }
+
+  const state = await updateExtensionState((currentState) => {
+    const activeJob = currentState.actionQueue.activeJob;
+    const cancelledJob = activeJob
+      ? {
+          ...activeJob,
+          status: "cancelled" as const,
+          completedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          error: "Anulowano przez użytkownika."
+        }
+      : null;
+
+    return {
+      ...currentState,
+      actionQueue: {
+        ...currentState.actionQueue,
+        activeJob: null,
+        pending: [],
+        isProcessing: false,
+        history: cancelledJob ? [cancelledJob, ...currentState.actionQueue.history].slice(0, 40) : currentState.actionQueue.history
+      }
+    };
+  });
+
+  await addLog({ level: "warning", message: "Anulowano aktywną akcję odświeżania." });
+  return state;
+}
+
 async function syncSession() {
   const state = await getExtensionState();
 
@@ -130,7 +433,29 @@ async function syncSession() {
     }
   }));
 
-  const verification = await verifySupabaseSession(state.auth);
+  const sessionResult = isSessionExpiring(state.auth)
+    ? await refreshSupabaseSession(state.auth)
+    : { ok: true, session: state.auth, user: state.auth.user };
+
+  if (!sessionResult.ok || !sessionResult.session || !sessionResult.user) {
+    const nextState = await updateExtensionState((currentState) => ({
+      ...currentState,
+      isConnected: false,
+      user: null,
+      auth: null,
+      automationEnabled: false,
+      sync: {
+        status: "expired",
+        lastSyncedAt: currentState.sync.lastSyncedAt,
+        lastHeartbeatAt: new Date().toISOString(),
+        error: sessionResult.error
+      }
+    }));
+    await addLog({ level: "warning", message: sessionResult.error ?? "Session expired." });
+    return nextState;
+  }
+
+  const verification = await verifySupabaseSession(sessionResult.session);
 
   if (!verification.ok || !verification.user) {
     const nextState = await updateExtensionState((currentState) => ({
@@ -149,9 +474,14 @@ async function syncSession() {
     ...currentState,
     isConnected: true,
     user: verification.user,
+    auth: {
+      ...sessionResult.session,
+      user: verification.user
+    },
     sync: {
       status: "synced",
-      lastSyncedAt: new Date().toISOString()
+      lastSyncedAt: new Date().toISOString(),
+      lastHeartbeatAt: new Date().toISOString()
     }
   }));
 

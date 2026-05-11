@@ -21,6 +21,22 @@ export const DEFAULT_STATE: ExtensionState = {
   vinted: {
     isOnVinted: false
   },
+  parsedListings: [],
+  parserHealth: {
+    status: "idle",
+    listingsFound: 0,
+    retries: 0,
+    selectorVersion: "vinted-card-parser@1",
+    logs: []
+  },
+  actionQueue: {
+    activeJob: null,
+    pending: [],
+    history: [],
+    isProcessing: false,
+    cooldownSeconds: 90
+  },
+  locale: "pl",
   sync: {
     status: "idle"
   },

@@ -1,0 +1,237 @@
+"use client";
+
+import { AlertCircle, CheckCircle2, RefreshCw } from "lucide-react";
+import { useEffect, useState } from "react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+
+type ParsedListing = {
+  id: string;
+  title: string;
+  priceText?: string;
+  url: string;
+  status: "active" | "reserved" | "sold" | "hidden" | "unknown";
+  imageUrl?: string;
+  hasRefreshButton: boolean;
+  parsedAt: string;
+};
+
+type ParserHealth = {
+  status: "idle" | "scanning" | "healthy" | "degraded" | "error";
+  listingsFound: number;
+  retries: number;
+  lastRunAt?: string;
+  error?: string;
+};
+
+type ExtensionStateResponse = {
+  ok: boolean;
+  data?: {
+    isConnected: boolean;
+    parsedListings: ParsedListing[];
+    parserHealth: ParserHealth;
+    actionQueue: {
+      activeJob: {
+        id: string;
+        listingId: string;
+        listingTitle: string;
+        status: string;
+        error?: string;
+      } | null;
+      cooldownUntil?: string;
+      history: Array<{
+        id: string;
+        listingTitle: string;
+        status: string;
+        completedAt?: string;
+        error?: string;
+      }>;
+    };
+    vinted: {
+      isOnVinted: boolean;
+      hostname?: string;
+    };
+  };
+  error?: string;
+};
+
+export function ParsedListingsPanel() {
+  const [status, setStatus] = useState<"checking" | "ready" | "missing" | "error">("checking");
+  const [extensionState, setExtensionState] = useState<ExtensionStateResponse["data"] | null>(null);
+  const [message, setMessage] = useState("Sprawdzam połączenie z rozszerzeniem...");
+
+  useEffect(() => {
+    function handleMessage(event: MessageEvent) {
+      if (event.origin !== window.location.origin || event.data?.source !== "vintedflow-extension") {
+        return;
+      }
+
+      if (event.data.type === "EXTENSION_READY" || event.data.type === "EXTENSION_STATE") {
+        handleResponse(event.data.payload);
+      }
+    }
+
+    window.addEventListener("message", handleMessage);
+    requestState();
+
+    const timeout = window.setTimeout(() => {
+      setStatus((currentStatus) => {
+        if (currentStatus === "checking") {
+          setMessage("Nie wykryto rozszerzenia. Załaduj extension/dist w Chrome i odśwież stronę.");
+          return "missing";
+        }
+
+        return currentStatus;
+      });
+    }, 1800);
+
+    const interval = window.setInterval(requestState, 6000);
+
+    return () => {
+      window.removeEventListener("message", handleMessage);
+      window.clearTimeout(timeout);
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  function requestState() {
+    window.postMessage({ source: "vintedflow-dashboard", type: "GET_EXTENSION_STATE" }, window.location.origin);
+  }
+
+  function requestRefresh(listingId: string) {
+    window.postMessage(
+      {
+        source: "vintedflow-dashboard",
+        type: "REQUEST_REFRESH_LISTING",
+        payload: { listingId }
+      },
+      window.location.origin
+    );
+  }
+
+  function cancelAction() {
+    window.postMessage({ source: "vintedflow-dashboard", type: "CANCEL_ACTIVE_ACTION" }, window.location.origin);
+  }
+
+  function handleResponse(response?: ExtensionStateResponse) {
+    if (!response?.ok) {
+      setStatus("error");
+      setMessage(response?.error ?? "Nie udało się pobrać danych z rozszerzenia.");
+      return;
+    }
+
+    setStatus("ready");
+    setExtensionState(response.data ?? null);
+    setMessage("Rozszerzenie online. Dane ofert są pobierane tylko z DOM strony Vinted.");
+  }
+
+  const listings = extensionState?.parsedListings ?? [];
+  const health = extensionState?.parserHealth;
+
+  return (
+    <Card className="mb-4 overflow-hidden p-0">
+      <div className="flex flex-col gap-4 border-b border-white/10 p-5 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <div className="flex items-center gap-3">
+            {status === "ready" ? <CheckCircle2 className="size-5 text-primary" /> : <AlertCircle className="size-5 text-amber-300" />}
+            <h2 className="text-lg font-semibold text-white">Oferty wykryte przez rozszerzenie</h2>
+          </div>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">{message}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={health?.status === "healthy" ? "success" : health?.status === "error" ? "warning" : "muted"}>
+            Parser: {health?.status ?? "brak danych"}
+          </Badge>
+          <Badge variant={extensionState?.vinted.isOnVinted ? "success" : "muted"}>
+            Vinted: {extensionState?.vinted.isOnVinted ? "wykryto" : "oczekuje"}
+          </Badge>
+          <Badge variant={extensionState?.actionQueue.activeJob ? "warning" : "muted"}>
+            Akcja: {extensionState?.actionQueue.activeJob?.status ?? "brak"}
+          </Badge>
+          <Button onClick={requestState} size="sm" type="button" variant="secondary">
+            <RefreshCw className="size-4" />
+            Odśwież
+          </Button>
+          <Button disabled={!extensionState?.actionQueue.activeJob} onClick={cancelAction} size="sm" type="button" variant="ghost">
+            Anuluj akcję
+          </Button>
+        </div>
+      </div>
+
+      {extensionState?.actionQueue.activeJob || extensionState?.actionQueue.cooldownUntil ? (
+        <div className="border-b border-white/10 p-5 text-sm text-muted-foreground">
+          {extensionState.actionQueue.activeJob ? (
+            <span>
+              Trwa akcja: {extensionState.actionQueue.activeJob.status} · {extensionState.actionQueue.activeJob.listingTitle}
+            </span>
+          ) : (
+            <span>Cooldown odświeżania: {formatCooldown(extensionState.actionQueue.cooldownUntil)}</span>
+          )}
+        </div>
+      ) : null}
+
+      {listings.length ? (
+        <div className="grid gap-3 p-5 md:grid-cols-2 xl:grid-cols-3">
+          {listings.map((listing) => (
+            <a
+              className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 transition hover:border-primary/30 hover:bg-primary/10"
+              href={listing.url}
+              key={listing.id}
+              rel="noreferrer"
+              target="_blank"
+            >
+              <div className="flex gap-3">
+                {listing.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- Remote Vinted thumbnails come from the extension parser, not Next image config.
+                  <img alt="" className="size-16 rounded-2xl object-cover" src={listing.imageUrl} />
+                ) : (
+                  <div className="size-16 rounded-2xl bg-primary/10" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-white">{listing.title}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{listing.priceText ?? "Brak ceny"}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Badge variant={listing.status === "active" ? "success" : "muted"}>{listing.status}</Badge>
+                    <Badge variant={listing.hasRefreshButton ? "default" : "muted"}>
+                      Odświeżanie: {listing.hasRefreshButton ? "tak" : "nie"}
+                    </Badge>
+                  </div>
+                  <button
+                    className="mt-3 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={!listing.hasRefreshButton || Boolean(extensionState?.actionQueue.activeJob) || isCooldownActive(extensionState?.actionQueue.cooldownUntil)}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      requestRefresh(listing.id);
+                    }}
+                    type="button"
+                  >
+                    Odśwież tę ofertę
+                  </button>
+                </div>
+              </div>
+            </a>
+          ))}
+        </div>
+      ) : (
+        <div className="p-5 text-sm leading-6 text-muted-foreground">
+          Brak sparsowanych ofert. Otwórz stronę Vinted z listą ofert w tej samej przeglądarce i poczekaj na synchronizację.
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function isCooldownActive(value?: string) {
+  return Boolean(value && new Date(value).getTime() > Date.now());
+}
+
+function formatCooldown(value?: string) {
+  if (!value) {
+    return "0s";
+  }
+
+  const seconds = Math.max(0, Math.ceil((new Date(value).getTime() - Date.now()) / 1000));
+  return `${seconds}s`;
+}

@@ -1,6 +1,7 @@
 import { Download, Filter, RefreshCw } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/page-header";
+import { ParsedListingsPanel } from "@/components/extension/parsed-listings-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -26,32 +27,34 @@ export default function ListingsPage() {
           <div className="flex gap-2">
             <Button type="button" variant="secondary">
               <Filter className="size-4" />
-              Filter
+              Filtr
             </Button>
             <Button type="button">
               <RefreshCw className="size-4" />
-              Bulk refresh
+              Odświeżenie zbiorcze
             </Button>
           </div>
         }
-        description="Manage listing state, pricing, engagement, and bulk operations prepared for extension sync."
-        eyebrow="Catalog"
-        title="Listings"
+        description="Bezpieczny podgląd ofert z dashboardu oraz read-only parsera Vinted w rozszerzeniu Chrome."
+        eyebrow="Katalog"
+        title="Oferty"
       />
+
+      <ParsedListingsPanel />
 
       <Card className="overflow-hidden p-0">
         <div className="flex flex-col gap-3 border-b border-white/10 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-white">Seller inventory</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Bulk select, refresh, boost, pause, or export listings.</p>
+            <h2 className="text-lg font-semibold text-white">Przykładowy katalog sprzedawcy</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Dane demo dashboardu. Realne odczyty z Vinted są powyżej.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" type="button" variant="secondary">
-              Mark selected
+              Zaznacz wybrane
             </Button>
             <Button size="sm" type="button" variant="secondary">
               <Download className="size-4" />
-              Export
+              Eksport
             </Button>
           </div>
         </div>
@@ -62,12 +65,12 @@ export default function ListingsPage() {
                 <th className="px-5 py-4">
                   <input className="size-4 rounded border-white/10 bg-white/[0.04]" type="checkbox" />
                 </th>
-                <th className="px-5 py-4">Listing</th>
-                <th className="px-5 py-4">Price</th>
-                <th className="px-5 py-4">Views</th>
-                <th className="px-5 py-4">Saves</th>
+                <th className="px-5 py-4">Oferta</th>
+                <th className="px-5 py-4">Cena</th>
+                <th className="px-5 py-4">Wyświetlenia</th>
+                <th className="px-5 py-4">Zapisania</th>
                 <th className="px-5 py-4">Status</th>
-                <th className="px-5 py-4">Action</th>
+                <th className="px-5 py-4">Akcja</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/10">
@@ -88,7 +91,7 @@ export default function ListingsPage() {
                   </td>
                   <td className="px-5 py-4">
                     <Button size="sm" type="button" variant="ghost">
-                      Manage
+                      Podgląd
                     </Button>
                   </td>
                 </tr>

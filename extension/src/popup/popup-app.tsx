@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { DASHBOARD_URL } from "@/lib/constants";
+import { languageLabels, messages } from "@/lib/i18n";
 import { moduleRegistry } from "@/modules/registry";
-import type { ExtensionMessage, ExtensionResponse, ExtensionState } from "@/types/extension";
+import type { ExtensionMessage, ExtensionResponse, ExtensionState, SupportedLocale } from "@/types/extension";
 
 function sendExtensionMessage<T>(message: ExtensionMessage): Promise<ExtensionResponse<T>> {
   return chrome.runtime.sendMessage(message);
@@ -12,6 +13,8 @@ export function PopupApp() {
   const [state, setState] = useState<ExtensionState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const locale = state?.locale ?? "pl";
+  const t = messages[locale];
 
   async function refreshState() {
     setError(null);
@@ -83,6 +86,37 @@ export function PopupApp() {
     }
   }
 
+  async function requestRefresh(listingId: string) {
+    setIsLoading(true);
+    const response = await sendExtensionMessage<ExtensionState>({
+      type: "REQUEST_REFRESH_LISTING",
+      payload: { listingId }
+    });
+    setState(response.data ?? state);
+    setError(response.error ?? null);
+    setIsLoading(false);
+  }
+
+  async function cancelAction() {
+    const response = await sendExtensionMessage<ExtensionState>({ type: "CANCEL_ACTIVE_ACTION" });
+    if (response.data) {
+      setState(response.data);
+    }
+  }
+
+  async function changeLocale(nextLocale: SupportedLocale) {
+    const response = await sendExtensionMessage<ExtensionState>({
+      type: "SET_LOCALE",
+      payload: {
+        locale: nextLocale
+      }
+    });
+
+    if (response.data) {
+      setState(response.data);
+    }
+  }
+
   return (
     <main className="popup-shell">
       <section className="hero-card">
@@ -90,20 +124,32 @@ export function PopupApp() {
           <div className="brand-mark">VF</div>
           <div>
             <p className="eyebrow">VintedFlow</p>
-            <h1>Seller control center</h1>
+            <h1>{t.title}</h1>
           </div>
         </div>
 
         <div className={state?.isConnected ? "status-pill connected" : "status-pill"}>
-          {state?.isConnected ? "Connected to dashboard" : "Not connected"}
+          {state?.isConnected ? t.connected : t.notConnected}
         </div>
       </section>
 
-      {isLoading ? <div className="panel muted">Loading extension state...</div> : null}
+      {isLoading ? <div className="panel muted">{t.loading}</div> : null}
       {error ? <div className="panel error">{error}</div> : null}
 
       <section className="panel">
-        <p className="section-title">User session</p>
+        <div className="section-header">
+          <p className="section-title">{t.session}</p>
+          <label className="locale-picker">
+            {t.language}
+            <select onChange={(event) => void changeLocale(event.target.value as SupportedLocale)} value={locale}>
+              {Object.entries(languageLabels).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
         {state?.user ? (
           <div className="user-row">
             <div className="avatar">{(state.user.name ?? state.user.email ?? "VF").slice(0, 2).toUpperCase()}</div>
@@ -113,55 +159,127 @@ export function PopupApp() {
             </div>
           </div>
         ) : (
-          <p className="secondary-text">Connect from the dashboard to synchronize your Supabase session.</p>
+          <p className="secondary-text">{t.connectHint}</p>
         )}
       </section>
 
       <section className="grid">
-        <StatusCard label="Vinted page" value={state?.vinted.isOnVinted ? "Detected" : "Not detected"} tone={state?.vinted.isOnVinted ? "good" : "idle"} />
-        <StatusCard label="Sync state" value={state?.sync.status ?? "idle"} tone={state?.sync.status === "error" ? "bad" : "good"} />
-        <StatusCard label="Automation" value={state?.automationEnabled ? "Monitoring" : "Paused"} tone={state?.automationEnabled ? "good" : "idle"} />
-        <StatusCard label="Modules ready" value={`${readyModules.length}/7`} tone="good" />
+        <StatusCard label={t.vintedPage} value={state?.vinted.isOnVinted ? t.detected : t.notDetected} tone={state?.vinted.isOnVinted ? "good" : "idle"} />
+        <StatusCard
+          label={t.syncState}
+          value={state?.sync.status ?? "idle"}
+          tone={state?.sync.status === "error" || state?.sync.status === "expired" ? "bad" : "good"}
+        />
+        <StatusCard
+          label={t.parserHealth}
+          value={state?.parserHealth.status ?? "idle"}
+          tone={state?.parserHealth.status === "error" ? "bad" : state?.parserHealth.status === "healthy" ? "good" : "idle"}
+        />
+        <StatusCard label={t.parsedListings} value={`${state?.parsedListings.length ?? 0}`} tone="good" />
       </section>
 
       <section className="panel">
-        <p className="section-title">Quick actions</p>
+        <div className="section-header">
+          <p className="section-title">{t.actionStatus}</p>
+          {state?.actionQueue.activeJob ? (
+            <button className="mini-button" onClick={cancelAction} type="button">
+              {t.cancel}
+            </button>
+          ) : null}
+        </div>
+        <p className="secondary-text">
+          {state?.actionQueue.activeJob
+            ? `${state.actionQueue.activeJob.status}: ${state.actionQueue.activeJob.listingTitle}`
+            : state?.actionQueue.cooldownUntil
+              ? `${t.cooldown}: ${formatCooldown(state.actionQueue.cooldownUntil)}`
+              : "Brak aktywnej akcji."}
+        </p>
+      </section>
+
+      <section className="panel">
+        <p className="section-title">{t.quickActions}</p>
         <div className="actions">
           <button className="button primary" onClick={openDashboard} type="button">
-            Connect dashboard
+            {t.connectDashboard}
           </button>
           <button className="button" disabled={!state?.isConnected} onClick={handleSync} type="button">
-            Sync now
+            {t.syncNow}
           </button>
           <button className="button" onClick={handleToggleAutomation} type="button">
-            {state?.automationEnabled ? "Pause monitoring" : "Enable monitoring"}
+            {state?.automationEnabled ? t.paused : t.monitoring}
           </button>
           <button className="button danger" disabled={!state?.isConnected} onClick={disconnect} type="button">
-            Disconnect
+            {t.disconnect}
           </button>
         </div>
       </section>
 
       <section className="panel">
-        <p className="section-title">Future modules</p>
-        <div className="module-list">
-          {moduleRegistry.map((module) => (
-            <div className="module-row" key={module.id}>
-              <div>
-                <p className="primary-text">{module.label}</p>
-                <p className="secondary-text">{module.description}</p>
+        <p className="section-title">{t.parsedListings}</p>
+        {state?.parsedListings.length ? (
+          <div className="listing-list">
+            {state.parsedListings.slice(0, 6).map((listing) => (
+              <div className="listing-row" key={listing.id}>
+                {/* eslint-disable-next-line @next/next/no-img-element -- Extension popup cannot use Next Image; these are remote Vinted thumbnails. */}
+                {listing.imageUrl ? <img alt="" src={listing.imageUrl} /> : <div className="listing-placeholder" />}
+                <div>
+                  <p className="primary-text">{listing.title}</p>
+                  <p className="secondary-text">
+                    {t.price}: {listing.priceText ?? "-"} · {t.status}: {listing.status}
+                  </p>
+                  <p className="secondary-text">
+                    ID {listing.id} · {t.refreshButton}: {listing.hasRefreshButton ? t.yes : t.no}
+                  </p>
+                  <button
+                    className="mini-button"
+                    disabled={!listing.hasRefreshButton || Boolean(state.actionQueue.activeJob) || isCooldownActive(state.actionQueue.cooldownUntil)}
+                    onClick={() => void requestRefresh(listing.id)}
+                    type="button"
+                  >
+                    {t.refreshOne}
+                  </button>
+                </div>
               </div>
-              <span className="module-badge">{state?.modules[module.id] ?? "planned"}</span>
+            ))}
+          </div>
+        ) : (
+          <p className="secondary-text">{t.noListings}</p>
+        )}
+      </section>
+
+      <section className="panel">
+        <p className="section-title">{t.parserHealth}</p>
+        <div className="module-list">
+          {state?.parserHealth.logs.slice(0, 3).map((log) => (
+            <div className="module-row" key={log.id}>
+              <div>
+                <p className="primary-text">{log.message}</p>
+                <p className="secondary-text">{new Date(log.createdAt).toLocaleTimeString()}</p>
+              </div>
+              <span className="module-badge">{log.level}</span>
             </div>
           ))}
         </div>
       </section>
 
       <footer>
-        Safe MVP: no aggressive automation is executed.
+        {t.readOnly} · {readyModules.length}/7
       </footer>
     </main>
   );
+}
+
+function isCooldownActive(value?: string) {
+  return Boolean(value && new Date(value).getTime() > Date.now());
+}
+
+function formatCooldown(value?: string) {
+  if (!value) {
+    return "0s";
+  }
+
+  const seconds = Math.max(0, Math.ceil((new Date(value).getTime() - Date.now()) / 1000));
+  return `${seconds}s`;
 }
 
 function StatusCard({ label, value, tone }: { label: string; value: string; tone: "good" | "bad" | "idle" }) {

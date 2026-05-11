@@ -1,17 +1,51 @@
 "use client";
 
-import { CheckCircle2, PlugZap, ShieldCheck } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, PlugZap, RefreshCw, ShieldCheck, Wifi } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { createSupabaseBrowserClient } from "@/lib/supabase";
 
-type BridgeStatus = "checking" | "ready" | "missing" | "connected" | "error";
+type BridgeStatus = "checking" | "ready" | "missing" | "connected" | "expired" | "error";
+
+type ExtensionBridgeResponse = {
+  ok: boolean;
+  data?: {
+    isConnected: boolean;
+    user: {
+      id: string;
+      email?: string;
+      name?: string;
+    } | null;
+    sync: {
+      status: "idle" | "syncing" | "synced" | "expired" | "error";
+      lastSyncedAt?: string;
+      lastHeartbeatAt?: string;
+      error?: string;
+    };
+    vinted: {
+      isOnVinted: boolean;
+      hostname?: string;
+      detectedAt?: string;
+    };
+  };
+  error?: string;
+};
+
+type Toast = {
+  id: string;
+  tone: "success" | "error" | "info";
+  message: string;
+};
 
 export function ExtensionConnectCard() {
   const [status, setStatus] = useState<BridgeStatus>("checking");
-  const [message, setMessage] = useState("Checking extension bridge...");
+  const [message, setMessage] = useState("Sprawdzam połączenie z rozszerzeniem...");
+  const [extensionState, setExtensionState] = useState<ExtensionBridgeResponse["data"] | null>(null);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [isConnecting, setIsConnecting] = useState(false);
 
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
@@ -24,28 +58,28 @@ export function ExtensionConnectCard() {
       }
 
       if (event.data.type === "EXTENSION_READY") {
-        setStatus("ready");
-        setMessage("Extension detected. You can connect this dashboard session.");
+        handleBridgeResponse(event.data.payload, "Rozszerzenie wykryte. Możesz połączyć sesję dashboardu.");
       }
 
       if (event.data.type === "CONNECT_EXTENSION_RESULT") {
-        if (event.data.payload?.ok) {
-          setStatus("connected");
-          setMessage("Extension connected to your Supabase dashboard session.");
-        } else {
-          setStatus("error");
-          setMessage(event.data.payload?.error ?? "Extension connection failed.");
-        }
+        setIsConnecting(false);
+        handleBridgeResponse(event.data.payload, "Rozszerzenie połączone z sesją Supabase.");
+        pushToast(event.data.payload?.ok ? "success" : "error", event.data.payload?.ok ? "Rozszerzenie połączone." : "Połączenie nieudane.");
+      }
+
+      if (event.data.type === "EXTENSION_STATE") {
+        handleBridgeResponse(event.data.payload, "Status rozszerzenia odświeżony.");
       }
     }
 
     window.addEventListener("message", handleMessage);
     window.postMessage({ source: "vintedflow-dashboard", type: "CHECK_EXTENSION" }, window.location.origin);
+    window.postMessage({ source: "vintedflow-dashboard", type: "GET_EXTENSION_STATE" }, window.location.origin);
 
     const timeout = window.setTimeout(() => {
       setStatus((currentStatus) => {
         if (currentStatus === "checking") {
-          setMessage("Extension not detected. Install or reload the unpacked extension, then refresh this page.");
+          setMessage("Nie wykryto rozszerzenia. Załaduj lub odśwież extension/dist, potem odśwież tę stronę.");
           return "missing";
         }
 
@@ -59,9 +93,58 @@ export function ExtensionConnectCard() {
     };
   }, []);
 
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      window.postMessage({ source: "vintedflow-dashboard", type: "GET_EXTENSION_STATE" }, window.location.origin);
+    }, 5000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  function handleBridgeResponse(response: ExtensionBridgeResponse | undefined, fallbackMessage: string) {
+    if (!response?.ok) {
+      setStatus("error");
+      setMessage(response?.error ?? "Bridge rozszerzenia zwrócił błąd.");
+      return;
+    }
+
+    setExtensionState(response.data ?? null);
+
+    if (response.data?.sync.status === "expired") {
+      setStatus("expired");
+      setMessage(response.data.sync.error ?? "Sesja rozszerzenia wygasła. Połącz ponownie, aby kontynuować.");
+      return;
+    }
+
+    if (response.data?.isConnected) {
+      setStatus("connected");
+      setMessage("Rozszerzenie jest online i zalogowane sesją dashboardu.");
+      return;
+    }
+
+    setStatus("ready");
+    setMessage(fallbackMessage);
+  }
+
+  function pushToast(tone: Toast["tone"], toastMessage: string) {
+    const toast = {
+      id: crypto.randomUUID(),
+      tone,
+      message: toastMessage
+    };
+
+    setToasts((currentToasts) => [toast, ...currentToasts].slice(0, 3));
+    window.setTimeout(() => {
+      setToasts((currentToasts) => currentToasts.filter((currentToast) => currentToast.id !== toast.id));
+    }, 4200);
+  }
+
   async function connectExtension() {
+    setIsConnecting(true);
     setStatus("checking");
-    setMessage("Preparing Supabase session for extension...");
+    setMessage("Przygotowuję sesję Supabase dla rozszerzenia...");
 
     const supabase = createSupabaseBrowserClient();
     const {
@@ -70,8 +153,10 @@ export function ExtensionConnectCard() {
     } = await supabase.auth.getSession();
 
     if (error || !session) {
+      setIsConnecting(false);
       setStatus("error");
-      setMessage(error?.message ?? "No active dashboard session found. Sign in again.");
+      setMessage(error?.message ?? "Nie znaleziono aktywnej sesji dashboardu. Zaloguj się ponownie.");
+      pushToast("error", "Nie znaleziono aktywnej sesji dashboardu.");
       return;
     }
 
@@ -94,26 +179,69 @@ export function ExtensionConnectCard() {
     );
   }
 
+  function refreshStatus() {
+    setStatus("checking");
+    setMessage("Odświeżam status rozszerzenia...");
+    window.postMessage({ source: "vintedflow-dashboard", type: "SYNC_EXTENSION" }, window.location.origin);
+    pushToast("info", "Odświeżam synchronizację rozszerzenia.");
+  }
+
+  function disconnectExtension() {
+    window.postMessage({ source: "vintedflow-dashboard", type: "DISCONNECT_EXTENSION" }, window.location.origin);
+    pushToast("info", "Wysłano prośbę o rozłączenie rozszerzenia.");
+  }
+
   return (
-    <Card className="mx-auto max-w-3xl p-6 sm:p-8">
+    <Card className="relative mx-auto max-w-4xl overflow-hidden p-6 sm:p-8">
+      <div className="pointer-events-none absolute right-10 top-0 h-52 w-52 rounded-full bg-primary/10 blur-3xl" />
+      <div className="fixed right-4 top-4 z-50 space-y-2">
+        {toasts.map((toast) => (
+          <div
+            className="rounded-2xl border border-white/10 bg-background/90 px-4 py-3 text-sm text-white shadow-glow backdrop-blur-xl"
+            key={toast.id}
+          >
+            <span className={toast.tone === "error" ? "text-red-300" : toast.tone === "success" ? "text-primary" : "text-muted-foreground"}>
+              {toast.message}
+            </span>
+          </div>
+        ))}
+      </div>
       <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
         <div className="flex size-14 shrink-0 items-center justify-center rounded-3xl bg-primary/10 text-primary">
           <PlugZap className="size-7" />
         </div>
         <div className="flex-1">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Chrome extension</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Rozszerzenie Chrome</p>
           <h1 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-white">
-            Connect your dashboard session
+            Połącz sesję dashboardu
           </h1>
           <p className="mt-4 text-sm leading-7 text-muted-foreground">
-            This page securely passes your current Supabase session to the local Chrome extension through the
-            dashboard bridge content script. The MVP stores the session in Chrome storage and verifies it with Supabase.
+            Ta strona bezpiecznie przekazuje aktualną sesję Supabase do lokalnego rozszerzenia Chrome przez bridge
+            dashboardu. Sesja jest zapisywana w Chrome storage i weryfikowana z Supabase.
           </p>
 
-          <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+          <div className="mt-6 grid gap-3 md:grid-cols-3">
+            <StatusTile label="Bridge" value={statusLabel[status]} active={status !== "missing" && status !== "error"} />
+            <StatusTile
+              label="Auth"
+              value={extensionState?.isConnected ? "Zalogowano" : "Nie połączono"}
+              active={Boolean(extensionState?.isConnected)}
+            />
+            <StatusTile
+              label="Vinted"
+              value={extensionState?.vinted.isOnVinted ? "Wykryto" : "Oczekuje"}
+              active={Boolean(extensionState?.vinted.isOnVinted)}
+            />
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
             <div className="flex items-start gap-3">
-              {status === "connected" ? (
+              {status === "checking" || isConnecting ? (
+                <Loader2 className="mt-0.5 size-5 animate-spin text-primary" />
+              ) : status === "connected" ? (
                 <CheckCircle2 className="mt-0.5 size-5 text-primary" />
+              ) : status === "error" || status === "expired" ? (
+                <AlertCircle className="mt-0.5 size-5 text-red-300" />
               ) : (
                 <ShieldCheck className="mt-0.5 size-5 text-primary" />
               )}
@@ -124,12 +252,36 @@ export function ExtensionConnectCard() {
             </div>
           </div>
 
+          {extensionState?.user ? (
+            <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-medium text-white">{extensionState.user.name ?? "Połączony sprzedawca"}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{extensionState.user.email ?? extensionState.user.id}</p>
+                </div>
+                <Badge variant="success">Rozszerzenie online</Badge>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <p className="text-xs text-muted-foreground">
+                  Ostatnia synchronizacja: {formatDate(extensionState.sync.lastSyncedAt)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Heartbeat: {formatDate(extensionState.sync.lastHeartbeatAt)}
+                </p>
+              </div>
+            </div>
+          ) : null}
+
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <Button disabled={status === "missing"} onClick={connectExtension} type="button">
-              Connect extension
+            <Button disabled={status === "missing" || isConnecting} onClick={connectExtension} type="button">
+              {isConnecting ? "Łączenie..." : status === "expired" ? "Połącz ponownie" : "Połącz rozszerzenie"}
             </Button>
-            <Button onClick={() => window.location.reload()} type="button" variant="secondary">
-              Recheck bridge
+            <Button onClick={refreshStatus} type="button" variant="secondary">
+              <RefreshCw className="size-4" />
+              Synchronizuj
+            </Button>
+            <Button disabled={!extensionState?.isConnected} onClick={disconnectExtension} type="button" variant="ghost">
+              Rozłącz
             </Button>
           </div>
         </div>
@@ -139,9 +291,34 @@ export function ExtensionConnectCard() {
 }
 
 const statusLabel: Record<BridgeStatus, string> = {
-  checking: "Checking bridge",
-  ready: "Extension detected",
-  missing: "Extension not detected",
-  connected: "Connected",
-  error: "Connection issue"
+  checking: "Sprawdzanie bridge",
+  ready: "Rozszerzenie wykryte",
+  missing: "Nie wykryto rozszerzenia",
+  connected: "Połączono",
+  expired: "Sesja wygasła",
+  error: "Problem z połączeniem"
 };
+
+function StatusTile({ label, value, active }: { label: string; value: string; active: boolean }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
+        <Wifi className={active ? "size-4 text-primary" : "size-4 text-muted-foreground"} />
+      </div>
+      <p className="mt-3 text-sm font-medium text-white">{value}</p>
+    </div>
+  );
+}
+
+function formatDate(value?: string) {
+  if (!value) {
+    return "jeszcze brak";
+  }
+
+  return new Intl.DateTimeFormat("en", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  }).format(new Date(value));
+}

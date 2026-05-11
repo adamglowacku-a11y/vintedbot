@@ -13,6 +13,7 @@ export function LogoutButton() {
 
   async function handleLogout() {
     setIsLoading(true);
+    window.postMessage({ source: "vintedflow-dashboard", type: "DASHBOARD_LOGOUT" }, window.location.origin);
     const supabase = createSupabaseBrowserClient();
     await supabase.auth.signOut();
     router.push("/login");

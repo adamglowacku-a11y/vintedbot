@@ -1,4 +1,7 @@
 import type { ExtensionMessage, VintedDetectionState } from "@/types/extension";
+import { startParserObserver } from "@/parser/observer";
+import { executeRefreshClick } from "@/content/refresh-executor";
+import type { VintedContentMessage } from "@/types/extension";
 
 const VINTED_HOST_PATTERN = /(^|\.)vinted\.(com|pl|fr|de)$/i;
 
@@ -21,6 +24,7 @@ async function publishDetectionState() {
 }
 
 void publishDetectionState();
+const parserObserver = startParserObserver();
 
 let lastUrl = window.location.href;
 
@@ -31,6 +35,7 @@ const observer = new MutationObserver(() => {
 
   lastUrl = window.location.href;
   void publishDetectionState();
+  parserObserver.scanNow();
 });
 
 observer.observe(document.documentElement, {
@@ -40,4 +45,30 @@ observer.observe(document.documentElement, {
 
 window.addEventListener("focus", () => {
   void publishDetectionState();
+});
+
+chrome.runtime.onMessage.addListener((message: VintedContentMessage, _sender, sendResponse) => {
+  if (message.type === "SCAN_NOW") {
+    parserObserver.scanNow();
+    sendResponse({ ok: true });
+    return false;
+  }
+
+  if (message.type === "EXECUTE_REFRESH_CLICK") {
+    executeRefreshClick(message.payload.listingId, message.payload.delayMs)
+      .then((result) => {
+        parserObserver.scanNow();
+        sendResponse(result);
+      })
+      .catch((error: unknown) => {
+        sendResponse({
+          ok: false,
+          error: error instanceof Error ? error.message : "Nieznany błąd odświeżania."
+        });
+      });
+
+    return true;
+  }
+
+  return false;
 });
