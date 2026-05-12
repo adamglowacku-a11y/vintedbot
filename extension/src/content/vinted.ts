@@ -1,10 +1,11 @@
-import type { ExtensionMessage, VintedDetectionState } from "@/types/extension";
+import type { ExtensionMessage, ExtensionState, VintedDetectionState } from "@/types/extension";
 import { startParserObserver } from "@/parser/observer";
 import { executeRefreshClick } from "@/content/refresh-executor";
 import type { VintedContentMessage } from "@/types/extension";
 import { mountVintedFlowWidget } from "@/content/vinted-widget";
 
 const VINTED_HOST_PATTERN = /(^|\.)vinted\.(com|pl|fr|de|it|es|nl|be|co\.uk)$/i;
+const STATE_STORAGE_KEY = "vintedflow:state";
 
 function getDetectionState(): VintedDetectionState {
   return {
@@ -92,6 +93,7 @@ async function safeRuntimeSend(message: ExtensionMessage) {
     }
 
     if (attempt === 2) {
+      await persistContentMessageFallback(message);
       console.warn("[VintedFlow content runtime]", response.error ?? "Nie udało się wysłać wiadomości do service workera.");
       return;
     }
@@ -130,4 +132,113 @@ function sendRuntimeMessage(message: ExtensionMessage): Promise<{ ok: boolean; e
 
 function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function persistContentMessageFallback(message: ExtensionMessage) {
+  if (message.type !== "VINTED_PAGE_STATUS") {
+    return;
+  }
+
+  const currentState = await readStoredState();
+  await writeStoredState({
+    ...currentState,
+    vinted: message.payload
+  });
+}
+
+function readStoredState(): Promise<ExtensionState> {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(STATE_STORAGE_KEY, (result) => {
+      resolve(normalizeStoredState(result[STATE_STORAGE_KEY] as Partial<ExtensionState> | undefined));
+    });
+  });
+}
+
+function writeStoredState(state: ExtensionState) {
+  return chrome.storage.local.set({
+    [STATE_STORAGE_KEY]: state
+  });
+}
+
+function normalizeStoredState(state?: Partial<ExtensionState>): ExtensionState {
+  const fallback = getDefaultContentState();
+
+  return {
+    ...fallback,
+    ...state,
+    vinted: {
+      ...fallback.vinted,
+      ...state?.vinted
+    },
+    parserHealth: {
+      ...fallback.parserHealth,
+      ...state?.parserHealth,
+      logs: state?.parserHealth?.logs ?? fallback.parserHealth.logs
+    },
+    actionQueue: {
+      ...fallback.actionQueue,
+      ...state?.actionQueue,
+      pending: state?.actionQueue?.pending ?? fallback.actionQueue.pending,
+      history: state?.actionQueue?.history ?? fallback.actionQueue.history
+    },
+    sync: {
+      ...fallback.sync,
+      ...state?.sync
+    },
+    modules: {
+      ...fallback.modules,
+      ...state?.modules
+    },
+    parsedListings: state?.parsedListings ?? fallback.parsedListings,
+    logs: state?.logs ?? fallback.logs,
+    locale: state?.locale ?? fallback.locale
+  };
+}
+
+function getDefaultContentState(): ExtensionState {
+  return {
+    isConnected: false,
+    user: null,
+    auth: null,
+    vinted: {
+      isOnVinted: false
+    },
+    parsedListings: [],
+    parserHealth: {
+      status: "idle",
+      listingsFound: 0,
+      retries: 0,
+      selectorVersion: "vinted-card-parser@2",
+      selectorCounters: {},
+      domHealth: {
+        anchorsFound: 0,
+        imageCardsFound: 0,
+        visibleCandidates: 0,
+        bodyTextLength: 0
+      },
+      logs: []
+    },
+    actionQueue: {
+      activeJob: null,
+      pending: [],
+      history: [],
+      isProcessing: false,
+      cooldownSeconds: 90
+    },
+    locale: "pl",
+    sync: {
+      status: "idle"
+    },
+    automationEnabled: false,
+    modules: {
+      autoRefresh: "planned",
+      bulkPriceEditing: "planned",
+      autoMessaging: "planned",
+      scheduler: "ready",
+      queue: "ready",
+      logging: "ready",
+      antiSpam: "ready"
+    },
+    logs: []
+  };
 }

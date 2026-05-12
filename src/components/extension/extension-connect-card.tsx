@@ -4,7 +4,7 @@ import { AlertCircle, CheckCircle2, Loader2, PlugZap, RefreshCw, ShieldCheck, Wi
 import { useEffect, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { createSupabaseBrowserClient } from "@/lib/supabase";
 
@@ -302,6 +302,11 @@ export function ExtensionConnectCard() {
             <Button disabled={status === "missing" || isConnecting} onClick={connectExtension} type="button">
               {isConnecting ? "Łączenie..." : status === "expired" ? "Połącz ponownie" : "Połącz rozszerzenie"}
             </Button>
+            {status === "connected" ? (
+              <ButtonLink href="/dashboard" variant="secondary">
+                Idź do panelu zarządzania
+              </ButtonLink>
+            ) : null}
             <Button onClick={refreshStatus} type="button" variant="secondary">
               <RefreshCw className="size-4" />
               Synchronizuj

@@ -1,6 +1,8 @@
 import { parseListingsWithDiagnostics } from "@/parser/listing-parser";
 import { SELECTOR_VERSION } from "@/parser/selectors";
-import type { ExtensionLog, ExtensionMessage, ParserHealthState } from "@/types/extension";
+import type { ExtensionLog, ExtensionMessage, ExtensionState, ParserHealthState } from "@/types/extension";
+
+const STATE_STORAGE_KEY = "vintedflow:state";
 
 type ParserObserverOptions = {
   retryLimit?: number;
@@ -131,6 +133,7 @@ async function safeRuntimeSend(message: ExtensionMessage) {
     }
 
     if (attempt === 2) {
+      await persistParserResultFallback(message);
       console.warn("[VintedFlow parser runtime]", response.error ?? "Parser nie połączył się z service workerem.");
       return;
     }
@@ -169,6 +172,122 @@ function sendRuntimeMessage(message: ExtensionMessage): Promise<{ ok: boolean; e
 
 function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function persistParserResultFallback(message: ExtensionMessage) {
+  if (message.type !== "PARSER_RESULT") {
+    return;
+  }
+
+  const currentState = await readStoredState();
+  const nextState: ExtensionState = {
+    ...currentState,
+    parsedListings: message.payload.listings,
+    parserHealth: {
+      ...message.payload.health,
+      logs: [...message.payload.health.logs, ...currentState.parserHealth.logs].slice(0, 60)
+    },
+    logs: [...message.payload.health.logs, ...currentState.logs].slice(0, 80)
+  };
+
+  await writeStoredState(nextState);
+}
+
+function readStoredState(): Promise<ExtensionState> {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(STATE_STORAGE_KEY, (result) => {
+      resolve(normalizeStoredState(result[STATE_STORAGE_KEY] as Partial<ExtensionState> | undefined));
+    });
+  });
+}
+
+function writeStoredState(state: ExtensionState) {
+  return chrome.storage.local.set({
+    [STATE_STORAGE_KEY]: state
+  });
+}
+
+function normalizeStoredState(state?: Partial<ExtensionState>): ExtensionState {
+  const fallback = getDefaultContentState();
+
+  return {
+    ...fallback,
+    ...state,
+    vinted: {
+      ...fallback.vinted,
+      ...state?.vinted
+    },
+    parserHealth: {
+      ...fallback.parserHealth,
+      ...state?.parserHealth,
+      logs: state?.parserHealth?.logs ?? fallback.parserHealth.logs
+    },
+    actionQueue: {
+      ...fallback.actionQueue,
+      ...state?.actionQueue,
+      pending: state?.actionQueue?.pending ?? fallback.actionQueue.pending,
+      history: state?.actionQueue?.history ?? fallback.actionQueue.history
+    },
+    sync: {
+      ...fallback.sync,
+      ...state?.sync
+    },
+    modules: {
+      ...fallback.modules,
+      ...state?.modules
+    },
+    parsedListings: state?.parsedListings ?? fallback.parsedListings,
+    logs: state?.logs ?? fallback.logs,
+    locale: state?.locale ?? fallback.locale
+  };
+}
+
+function getDefaultContentState(): ExtensionState {
+  return {
+    isConnected: false,
+    user: null,
+    auth: null,
+    vinted: {
+      isOnVinted: false
+    },
+    parsedListings: [],
+    parserHealth: {
+      status: "idle",
+      listingsFound: 0,
+      retries: 0,
+      selectorVersion: SELECTOR_VERSION,
+      selectorCounters: {},
+      domHealth: {
+        anchorsFound: 0,
+        imageCardsFound: 0,
+        visibleCandidates: 0,
+        bodyTextLength: 0
+      },
+      logs: []
+    },
+    actionQueue: {
+      activeJob: null,
+      pending: [],
+      history: [],
+      isProcessing: false,
+      cooldownSeconds: 90
+    },
+    locale: "pl",
+    sync: {
+      status: "idle"
+    },
+    automationEnabled: false,
+    modules: {
+      autoRefresh: "planned",
+      bulkPriceEditing: "planned",
+      autoMessaging: "planned",
+      scheduler: "ready",
+      queue: "ready",
+      logging: "ready",
+      antiSpam: "ready"
+    },
+    logs: []
+  };
 }
 
 function createLog(
