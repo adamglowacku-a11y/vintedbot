@@ -38,6 +38,7 @@ export function mountVintedFlowWidget(controller: WidgetController) {
   const sync = root.querySelector<HTMLButtonElement>("[data-vf-sync-now]");
   const monitor = root.querySelector<HTMLButtonElement>("[data-vf-monitor]");
   const refresh = root.querySelector<HTMLButtonElement>("[data-vf-refresh-first]");
+  const draft = root.querySelector<HTMLButtonElement>("[data-vf-draft-first]");
   const cancel = root.querySelector<HTMLButtonElement>("[data-vf-cancel]");
   let isRefreshing = false;
 
@@ -64,6 +65,10 @@ export function mountVintedFlowWidget(controller: WidgetController) {
 
   refresh?.addEventListener("click", () => {
     void refreshFirstListing(root);
+  });
+
+  draft?.addEventListener("click", () => {
+    void prepareFirstRelistDraft(root);
   });
 
   cancel?.addEventListener("click", () => {
@@ -157,7 +162,7 @@ async function toggleMonitoring(root: HTMLElement) {
 async function refreshFirstListing(root: HTMLElement) {
   setText(root, "vf-action", "Szukam oferty...");
   const stateResponse = await sendWidgetMessageWithRetry({ type: "GET_STATE" });
-  const listing = findRefreshableListing(stateResponse.data?.parsedListings ?? []);
+  const listing = findRelistDraftListing(stateResponse.data?.parsedListings ?? []);
 
   if (!listing) {
     setText(root, "vf-error", "Brak aktywnej oferty z wykrytym przyciskiem odświeżenia.");
@@ -183,6 +188,37 @@ async function refreshFirstListing(root: HTMLElement) {
   await refreshWidgetState(root);
 }
 
+async function prepareFirstRelistDraft(root: HTMLElement) {
+  setText(root, "vf-action", "Przygotowuję draft...");
+  setText(root, "vf-error", "");
+
+  const stateResponse = await sendWidgetMessageWithRetry({ type: "GET_STATE" });
+  const listing = findRefreshableListing(stateResponse.data?.parsedListings ?? []);
+
+  if (!listing) {
+    setText(root, "vf-action", "Brak draftu");
+    setText(root, "vf-error", "Najpierw kliknij Skanuj profil, żeby wykryć aktywne oferty.");
+    return;
+  }
+
+  const draftText = [
+    "Draft ponownego wystawienia VintedFlow",
+    `Tytuł: ${listing.title}`,
+    `Cena: ${listing.priceText ?? "uzupełnij ręcznie"}`,
+    `Link źródłowy: ${listing.url}`,
+    "",
+    "Kroki ręczne:",
+    "1. Sprawdź dane starej oferty.",
+    "2. Usuń starą ofertę ręcznie, jeśli chcesz ją zastąpić.",
+    "3. Otwórz formularz sprzedaży Vinted.",
+    "4. Wklej dane i opublikuj ręcznie po sprawdzeniu."
+  ].join("\n");
+
+  await navigator.clipboard?.writeText(draftText);
+  setText(root, "vf-action", `Draft gotowy: ${listing.title}`);
+  window.open("https://www.vinted.pl/items/new", "_blank", "noopener,noreferrer");
+}
+
 async function sendActionAndRefresh(root: HTMLElement, message: ExtensionMessage, pendingText: string) {
   setText(root, "vf-action", pendingText);
   setText(root, "vf-error", "");
@@ -198,6 +234,10 @@ async function sendActionAndRefresh(root: HTMLElement, message: ExtensionMessage
 
 function findRefreshableListing(listings: ParsedVintedListing[]) {
   return listings.find((listing) => listing.status === "active" && listing.hasRefreshButton) ?? listings.find((listing) => listing.hasRefreshButton);
+}
+
+function findRelistDraftListing(listings: ParsedVintedListing[]) {
+  return listings.find((listing) => listing.status === "active") ?? listings[0];
 }
 
 function getActionLabel(state?: ExtensionState) {
@@ -338,6 +378,7 @@ function createWidgetMarkup() {
       <div class="vf-actions">
         <button data-vf-scan type="button">Skanuj profil</button>
         <button data-vf-refresh-first type="button">Odśwież 1 ofertę</button>
+        <button data-vf-draft-first type="button">Draft wystawienia</button>
         <button data-vf-sync-now type="button">Synchronizuj</button>
         <button data-vf-monitor type="button"><span data-vf-monitor-state>Monitoring</span></button>
         <button data-vf-cancel type="button">Anuluj akcję</button>

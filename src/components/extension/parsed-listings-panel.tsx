@@ -1,10 +1,10 @@
 "use client";
 
-import { AlertCircle, CheckCircle2, RefreshCw } from "lucide-react";
+import { AlertCircle, CheckCircle2, Copy, ExternalLink, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 type ParsedListing = {
@@ -70,6 +70,7 @@ export function ParsedListingsPanel() {
   const [status, setStatus] = useState<"checking" | "ready" | "missing" | "error">("checking");
   const [extensionState, setExtensionState] = useState<ExtensionStateResponse["data"] | null>(null);
   const [message, setMessage] = useState("Sprawdzam połączenie z rozszerzeniem...");
+  const [relistDraft, setRelistDraft] = useState<ParsedListing | null>(null);
 
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
@@ -126,6 +127,25 @@ export function ParsedListingsPanel() {
 
   function manualScan() {
     window.postMessage({ source: "vintedflow-dashboard", type: "MANUAL_SCAN" }, window.location.origin);
+  }
+
+  async function prepareRelistDraft(listing: ParsedListing) {
+    setRelistDraft(listing);
+    const draftText = [
+      "Draft ponownego wystawienia VintedFlow",
+      `Tytuł: ${listing.title}`,
+      `Cena: ${listing.priceText ?? "uzupełnij ręcznie"}`,
+      `Link źródłowy: ${listing.url}`,
+      "",
+      "Checklist:",
+      "1. Sprawdź zdjęcia i opis.",
+      "2. Usuń starą ofertę ręcznie, jeśli chcesz ją zastąpić.",
+      "3. Wklej dane do nowego formularza Vinted.",
+      "4. Opublikuj ręcznie po sprawdzeniu zgodności z Vinted."
+    ].join("\n");
+
+    await navigator.clipboard?.writeText(draftText);
+    setMessage("Przygotowano draft i skopiowano dane do schowka. Otwórz formularz Vinted i wklej dane ręcznie.");
   }
 
   function handleResponse(response?: ExtensionStateResponse) {
@@ -222,6 +242,40 @@ export function ParsedListingsPanel() {
         </div>
       ) : null}
 
+      {relistDraft ? (
+        <div className="border-b border-white/10 bg-primary/[0.04] p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex gap-3">
+              {relistDraft.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- Remote Vinted thumbnails come from extension parser.
+                <img alt="" className="size-16 rounded-2xl object-cover" src={relistDraft.imageUrl} />
+              ) : (
+                <div className="size-16 rounded-2xl bg-primary/10" />
+              )}
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-primary">Asystent ponownego wystawienia</p>
+                <h3 className="mt-1 text-lg font-semibold text-white">{relistDraft.title}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{relistDraft.priceText ?? "Cena do uzupełnienia ręcznie"}</p>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+                  To jest bezpieczny draft. VintedFlow nie usuwa i nie publikuje ogłoszenia automatycznie. Skopiowane dane
+                  możesz wkleić do oficjalnego formularza Vinted i zatwierdzić ręcznie.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => void prepareRelistDraft(relistDraft)} size="sm" type="button" variant="secondary">
+                <Copy className="size-4" />
+                Kopiuj draft
+              </Button>
+              <ButtonLink href="https://www.vinted.pl/items/new" size="sm" target="_blank" variant="secondary">
+                <ExternalLink className="size-4" />
+                Otwórz formularz Vinted
+              </ButtonLink>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {listings.length ? (
         <div className="grid gap-3 p-5 md:grid-cols-2 xl:grid-cols-3">
           {listings.map((listing) => (
@@ -258,6 +312,16 @@ export function ParsedListingsPanel() {
                     type="button"
                   >
                     Odśwież tę ofertę
+                  </button>
+                  <button
+                    className="ml-2 mt-3 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/[0.1]"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      void prepareRelistDraft(listing);
+                    }}
+                    type="button"
+                  >
+                    Przygotuj draft
                   </button>
                 </div>
               </div>
