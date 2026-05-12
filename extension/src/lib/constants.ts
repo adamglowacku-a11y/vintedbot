@@ -27,6 +27,7 @@ export const DEFAULT_STATE: ExtensionState = {
     isOnVinted: false
   },
   parsedListings: [],
+  relistDrafts: [],
   parserHealth: {
     status: "idle",
     listingsFound: 0,

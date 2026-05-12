@@ -296,6 +296,7 @@ async function disconnectSessionInStorage(): Promise<ExtensionResponse<Extension
     ...getDefaultBridgeState(),
     locale: currentState.locale,
     parsedListings: currentState.parsedListings,
+    relistDrafts: currentState.relistDrafts,
     parserHealth: currentState.parserHealth,
     vinted: currentState.vinted,
     logs: [
@@ -367,6 +368,7 @@ function normalizeBridgeState(state?: Partial<ExtensionState>): ExtensionState {
       ...state?.modules
     },
     parsedListings: state?.parsedListings ?? fallback.parsedListings,
+    relistDrafts: state?.relistDrafts ?? fallback.relistDrafts,
     logs: state?.logs ?? fallback.logs,
     locale: state?.locale ?? fallback.locale
   };
@@ -381,6 +383,7 @@ function getDefaultBridgeState(): ExtensionState {
       isOnVinted: false
     },
     parsedListings: [],
+    relistDrafts: [],
     parserHealth: {
       status: "idle",
       listingsFound: 0,

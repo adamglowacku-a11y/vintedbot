@@ -54,6 +54,7 @@ export function normalizeExtensionState(state?: Partial<ExtensionState>): Extens
       ...state?.modules
     },
     parsedListings: state?.parsedListings ?? DEFAULT_STATE.parsedListings,
+    relistDrafts: state?.relistDrafts ?? DEFAULT_STATE.relistDrafts,
     logs: state?.logs ?? DEFAULT_STATE.logs,
     locale: state?.locale ?? DEFAULT_STATE.locale
   };

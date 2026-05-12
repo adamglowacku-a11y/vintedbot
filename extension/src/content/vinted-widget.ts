@@ -1,4 +1,4 @@
-import type { ExtensionMessage, ExtensionResponse, ExtensionState, ParsedVintedListing } from "@/types/extension";
+import type { ExtensionMessage, ExtensionResponse, ExtensionState, ParsedVintedListing, RelistDraft } from "@/types/extension";
 import { executeRefreshClick } from "@/content/refresh-executor";
 
 type WidgetScanResult = {
@@ -16,6 +16,7 @@ type WidgetController = {
 
 const WIDGET_ID = "vintedflow-page-widget";
 const PROFILE_PATH_PATTERN = /\/(member|members|profile)\//i;
+const NEW_LISTING_PATH_PATTERN = /\/items\/new|\/items\/upload|\/catalog\/new|\/sell/i;
 const DASHBOARD_CONNECT_URL = "https://vintly.live/extension/connect";
 const STATE_STORAGE_KEY = "vintedflow:state";
 
@@ -94,7 +95,8 @@ export function mountVintedFlowWidget(controller: WidgetController) {
 }
 
 function updateVisibility(root: HTMLElement) {
-  root.dataset.visible = PROFILE_PATH_PATTERN.test(window.location.pathname) ? "true" : "false";
+  root.dataset.visible = isWidgetPage() ? "true" : "false";
+  root.dataset.mode = NEW_LISTING_PATH_PATTERN.test(window.location.pathname) ? "new-listing" : "profile";
 }
 
 async function scanAndRefresh(root: HTMLElement, controller: WidgetController, reason: string) {
@@ -146,6 +148,7 @@ async function refreshWidgetState(root: HTMLElement, options: { quiet?: boolean 
   setText(root, "vf-action", getActionLabel(state));
   setText(root, "vf-refreshable", String((state?.parsedListings ?? []).filter((listing) => listing.hasRefreshButton).length));
   setText(root, "vf-monitor-state", state?.automationEnabled ? "Monitoring: ON" : "Monitoring: OFF");
+  renderDraftLibrary(root, state?.relistDrafts ?? []);
   setText(root, "vf-error", "");
 }
 
@@ -193,7 +196,7 @@ async function prepareFirstRelistDraft(root: HTMLElement) {
   setText(root, "vf-error", "");
 
   const stateResponse = await sendWidgetMessageWithRetry({ type: "GET_STATE" });
-  const listing = findRefreshableListing(stateResponse.data?.parsedListings ?? []);
+  const listing = findRelistDraftListing(stateResponse.data?.parsedListings ?? []);
 
   if (!listing) {
     setText(root, "vf-action", "Brak draftu");
@@ -201,22 +204,39 @@ async function prepareFirstRelistDraft(root: HTMLElement) {
     return;
   }
 
-  const draftText = [
-    "Draft ponownego wystawienia VintedFlow",
-    `Tytuł: ${listing.title}`,
-    `Cena: ${listing.priceText ?? "uzupełnij ręcznie"}`,
-    `Link źródłowy: ${listing.url}`,
-    "",
-    "Kroki ręczne:",
-    "1. Sprawdź dane starej oferty.",
-    "2. Usuń starą ofertę ręcznie, jeśli chcesz ją zastąpić.",
-    "3. Otwórz formularz sprzedaży Vinted.",
-    "4. Wklej dane i opublikuj ręcznie po sprawdzeniu."
-  ].join("\n");
+  const draft = await saveRelistDraft(listing);
+  const draftText = createDraftText(draft);
 
   await navigator.clipboard?.writeText(draftText);
-  setText(root, "vf-action", `Draft gotowy: ${listing.title}`);
+  setText(root, "vf-action", `Zapamiętano: ${listing.title}`);
+  setText(root, "vf-error", "Draft zapisany. Wejdź w Dodaj ogłoszenie i otwórz Zapamiętane ogłoszenia.");
+  await refreshWidgetState(root, { quiet: true });
   window.open("https://www.vinted.pl/items/new", "_blank", "noopener,noreferrer");
+}
+
+async function saveRelistDraft(listing: ParsedVintedListing) {
+  const currentState = await readStateFromStorageFallback();
+  const draft: RelistDraft = {
+    id: crypto.randomUUID(),
+    sourceListingId: listing.id,
+    title: listing.title,
+    priceText: listing.priceText,
+    url: listing.url,
+    imageUrl: listing.imageUrl,
+    savedAt: new Date().toISOString()
+  };
+  const nextDrafts = [draft, ...(currentState?.relistDrafts ?? []).filter((item) => item.sourceListingId !== listing.id)].slice(0, 30);
+  const nextState: ExtensionState = {
+    ...getDefaultWidgetState(),
+    ...currentState,
+    relistDrafts: nextDrafts
+  };
+
+  await chrome.storage.local.set({
+    [STATE_STORAGE_KEY]: nextState
+  });
+
+  return draft;
 }
 
 async function sendActionAndRefresh(root: HTMLElement, message: ExtensionMessage, pendingText: string) {
@@ -352,6 +372,133 @@ function readStateFromStorageFallback(): Promise<ExtensionState | null> {
   });
 }
 
+function renderDraftLibrary(root: HTMLElement, drafts: RelistDraft[]) {
+  const container = root.querySelector<HTMLElement>("[data-vf-draft-list]");
+
+  if (!container) {
+    return;
+  }
+
+  if (!drafts.length) {
+    container.innerHTML = `<p class="vf-muted">Brak zapamiętanych ogłoszeń. Najpierw zapisz draft z profilu.</p>`;
+    return;
+  }
+
+  container.innerHTML = drafts
+    .slice(0, 8)
+    .map(
+      (draft) => `
+        <div class="vf-draft-row" data-vf-draft-id="${escapeHtml(draft.id)}">
+          ${draft.imageUrl ? `<img src="${escapeHtml(draft.imageUrl)}" alt="" />` : `<span class="vf-draft-placeholder"></span>`}
+          <div>
+            <strong>${escapeHtml(draft.title)}</strong>
+            <p>${escapeHtml(draft.priceText ?? "Cena do uzupełnienia")}</p>
+            <button data-vf-copy-draft="${escapeHtml(draft.id)}" type="button">Kopiuj dane</button>
+          </div>
+        </div>
+      `
+    )
+    .join("");
+
+  container.querySelectorAll<HTMLButtonElement>("[data-vf-copy-draft]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const draft = drafts.find((item) => item.id === button.dataset.vfCopyDraft);
+
+      if (!draft) {
+        return;
+      }
+
+      await navigator.clipboard?.writeText(createDraftText(draft));
+      setText(root, "vf-action", `Skopiowano: ${draft.title}`);
+      setText(root, "vf-error", "Wklej dane ręcznie do formularza Vinted.");
+    });
+  });
+}
+
+function createDraftText(draft: RelistDraft) {
+  return [
+    "Zapamiętane ogłoszenie VintedFlow",
+    `Tytuł: ${draft.title}`,
+    `Cena: ${draft.priceText ?? "uzupełnij ręcznie"}`,
+    `Link źródłowy: ${draft.url}`,
+    draft.imageUrl ? `Miniatura: ${draft.imageUrl}` : "",
+    "",
+    "Kroki:",
+    "1. Wklej tytuł, cenę i opis ręcznie w formularzu Vinted.",
+    "2. Dodaj zdjęcia z własnego urządzenia.",
+    "3. Sprawdź kategorię, rozmiar, markę i stan.",
+    "4. Opublikuj ręcznie po sprawdzeniu."
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function isWidgetPage() {
+  return PROFILE_PATH_PATTERN.test(window.location.pathname) || NEW_LISTING_PATH_PATTERN.test(window.location.pathname);
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (char) => {
+    const entities: Record<string, string> = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;"
+    };
+    return entities[char] ?? char;
+  });
+}
+
+function getDefaultWidgetState(): ExtensionState {
+  return {
+    isConnected: false,
+    user: null,
+    auth: null,
+    vinted: {
+      isOnVinted: false
+    },
+    parsedListings: [],
+    relistDrafts: [],
+    parserHealth: {
+      status: "idle",
+      listingsFound: 0,
+      retries: 0,
+      selectorVersion: "vinted-card-parser@2",
+      selectorCounters: {},
+      domHealth: {
+        anchorsFound: 0,
+        imageCardsFound: 0,
+        visibleCandidates: 0,
+        bodyTextLength: 0
+      },
+      logs: []
+    },
+    actionQueue: {
+      activeJob: null,
+      pending: [],
+      history: [],
+      isProcessing: false,
+      cooldownSeconds: 90
+    },
+    locale: "pl",
+    sync: {
+      status: "idle"
+    },
+    automationEnabled: false,
+    modules: {
+      autoRefresh: "planned",
+      bulkPriceEditing: "planned",
+      autoMessaging: "planned",
+      scheduler: "ready",
+      queue: "ready",
+      logging: "ready",
+      antiSpam: "ready"
+    },
+    logs: []
+  };
+}
+
 function createWidgetMarkup() {
   return `
     <button aria-label="Otwórz VintedFlow" class="vf-launcher" data-vf-launcher type="button">
@@ -375,6 +522,10 @@ function createWidgetMarkup() {
         <span>Akcja <strong data-vf-action>Brak</strong></span>
       </div>
       <p class="vf-muted">Panel zostaje na stronie profilu i nie zamyka się przy pracy z kartą Vinted.</p>
+      <div class="vf-drafts">
+        <strong>Zapamiętane ogłoszenia</strong>
+        <div data-vf-draft-list></div>
+      </div>
       <div class="vf-actions">
         <button data-vf-scan type="button">Skanuj profil</button>
         <button data-vf-refresh-first type="button">Odśwież 1 ofertę</button>
@@ -424,6 +575,15 @@ function injectWidgetStyles() {
     #${WIDGET_ID} .vf-grid span { border: 1px solid rgba(255,255,255,.08); border-radius: 14px; background: rgba(255,255,255,.045); padding: 10px; color: #94a3b8; font-size: 11px; }
     #${WIDGET_ID} .vf-grid strong { display: block; margin-top: 5px; color: #f8fafc; font-size: 13px; }
     #${WIDGET_ID} .vf-muted { margin-top: 12px; color: #94a3b8; font-size: 12px; line-height: 1.55; }
+    #${WIDGET_ID} .vf-drafts { display: none; margin-top: 12px; border: 1px solid rgba(255,255,255,.08); border-radius: 16px; background: rgba(255,255,255,.04); padding: 10px; }
+    #${WIDGET_ID}[data-mode="new-listing"] .vf-drafts { display: block; }
+    #${WIDGET_ID} .vf-drafts > strong { display: block; margin-bottom: 8px; color: #f8fafc; font-size: 13px; }
+    #${WIDGET_ID} .vf-draft-row { display: grid; grid-template-columns: 44px 1fr; gap: 9px; padding: 8px 0; border-top: 1px solid rgba(255,255,255,.08); }
+    #${WIDGET_ID} .vf-draft-row:first-child { border-top: 0; }
+    #${WIDGET_ID} .vf-draft-row img, #${WIDGET_ID} .vf-draft-placeholder { width: 44px; height: 44px; border-radius: 12px; object-fit: cover; background: rgba(45,212,191,.12); }
+    #${WIDGET_ID} .vf-draft-row strong { display: block; overflow: hidden; color: #f8fafc; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+    #${WIDGET_ID} .vf-draft-row p { margin-top: 2px; color: #94a3b8; font-size: 11px; }
+    #${WIDGET_ID} .vf-draft-row button { margin-top: 6px; border: 1px solid rgba(45,212,191,.22); border-radius: 999px; background: rgba(45,212,191,.12); color: #5eead4; cursor: pointer; font-size: 11px; font-weight: 800; padding: 6px 10px; }
     #${WIDGET_ID} .vf-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
     #${WIDGET_ID} .vf-actions button { min-height: 36px; border: 1px solid rgba(45,212,191,.22); border-radius: 999px; background: rgba(45,212,191,.12); color: #5eead4; cursor: pointer; font-size: 12px; font-weight: 800; }
     #${WIDGET_ID} .vf-actions button:first-child { background: #2dd4bf; color: #07111f; }

@@ -190,6 +190,7 @@ function normalizeStoredState(state?: Partial<ExtensionState>): ExtensionState {
       ...state?.modules
     },
     parsedListings: state?.parsedListings ?? fallback.parsedListings,
+    relistDrafts: state?.relistDrafts ?? fallback.relistDrafts,
     logs: state?.logs ?? fallback.logs,
     locale: state?.locale ?? fallback.locale
   };
@@ -204,6 +205,7 @@ function getDefaultContentState(): ExtensionState {
       isOnVinted: false
     },
     parsedListings: [],
+    relistDrafts: [],
     parserHealth: {
       status: "idle",
       listingsFound: 0,

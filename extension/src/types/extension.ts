@@ -46,6 +46,16 @@ export type ParsedVintedListing = {
   selectorVersion: string;
 };
 
+export type RelistDraft = {
+  id: string;
+  sourceListingId: string;
+  title: string;
+  priceText?: string;
+  url: string;
+  imageUrl?: string;
+  savedAt: string;
+};
+
 export type ParserHealthState = {
   status: "idle" | "scanning" | "healthy" | "degraded" | "error";
   lastRunAt?: string;
@@ -109,6 +119,7 @@ export type ExtensionState = {
   auth: SupabaseSessionSnapshot | null;
   vinted: VintedDetectionState;
   parsedListings: ParsedVintedListing[];
+  relistDrafts: RelistDraft[];
   parserHealth: ParserHealthState;
   actionQueue: ActionQueueState;
   locale: SupportedLocale;
