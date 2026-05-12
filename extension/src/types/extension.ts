@@ -50,6 +50,7 @@ export type RelistDraft = {
   id: string;
   sourceListingId: string;
   title: string;
+  description?: string;
   priceText?: string;
   url: string;
   imageUrl?: string;

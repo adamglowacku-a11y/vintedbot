@@ -14,8 +14,11 @@ type WidgetController = {
   schedule: (reason: string) => void;
 };
 
+type RelistDraftInput = Omit<RelistDraft, "id" | "savedAt">;
+
 const WIDGET_ID = "vintedflow-page-widget";
 const PROFILE_PATH_PATTERN = /\/(member|members|profile)\//i;
+const ITEM_PATH_PATTERN = /\/items?\/\d+|\/catalog\/\d+/i;
 const NEW_LISTING_PATH_PATTERN = /\/items\/new|\/items\/upload|\/catalog\/new|\/sell/i;
 const DASHBOARD_CONNECT_URL = "https://vintly.live/extension/connect";
 const STATE_STORAGE_KEY = "vintedflow:state";
@@ -96,7 +99,7 @@ export function mountVintedFlowWidget(controller: WidgetController) {
 
 function updateVisibility(root: HTMLElement) {
   root.dataset.visible = isWidgetPage() ? "true" : "false";
-  root.dataset.mode = NEW_LISTING_PATH_PATTERN.test(window.location.pathname) ? "new-listing" : "profile";
+  root.dataset.mode = getWidgetMode();
 }
 
 async function scanAndRefresh(root: HTMLElement, controller: WidgetController, reason: string) {
@@ -196,11 +199,12 @@ async function prepareFirstRelistDraft(root: HTMLElement) {
   setText(root, "vf-error", "");
 
   const stateResponse = await sendWidgetMessageWithRetry({ type: "GET_STATE" });
-  const listing = findRelistDraftListing(stateResponse.data?.parsedListings ?? []);
+  const currentPageDraft = extractCurrentListingDraft();
+  const listing = currentPageDraft ?? toRelistDraftInput(findRelistDraftListing(stateResponse.data?.parsedListings ?? []));
 
   if (!listing) {
     setText(root, "vf-action", "Brak draftu");
-    setText(root, "vf-error", "Najpierw kliknij Skanuj profil, żeby wykryć aktywne oferty.");
+    setText(root, "vf-error", "Wejdź w konkretną ofertę albo kliknij Skanuj profil, żeby wykryć aktywne oferty.");
     return;
   }
 
@@ -214,18 +218,19 @@ async function prepareFirstRelistDraft(root: HTMLElement) {
   window.open("https://www.vinted.pl/items/new", "_blank", "noopener,noreferrer");
 }
 
-async function saveRelistDraft(listing: ParsedVintedListing) {
+async function saveRelistDraft(listing: RelistDraftInput) {
   const currentState = await readStateFromStorageFallback();
   const draft: RelistDraft = {
     id: crypto.randomUUID(),
-    sourceListingId: listing.id,
+    sourceListingId: listing.sourceListingId,
     title: listing.title,
+    description: listing.description,
     priceText: listing.priceText,
     url: listing.url,
     imageUrl: listing.imageUrl,
     savedAt: new Date().toISOString()
   };
-  const nextDrafts = [draft, ...(currentState?.relistDrafts ?? []).filter((item) => item.sourceListingId !== listing.id)].slice(0, 30);
+  const nextDrafts = [draft, ...(currentState?.relistDrafts ?? []).filter((item) => item.sourceListingId !== listing.sourceListingId)].slice(0, 30);
   const nextState: ExtensionState = {
     ...getDefaultWidgetState(),
     ...currentState,
@@ -258,6 +263,20 @@ function findRefreshableListing(listings: ParsedVintedListing[]) {
 
 function findRelistDraftListing(listings: ParsedVintedListing[]) {
   return listings.find((listing) => listing.status === "active") ?? listings[0];
+}
+
+function toRelistDraftInput(listing?: ParsedVintedListing): RelistDraftInput | null {
+  if (!listing) {
+    return null;
+  }
+
+  return {
+    sourceListingId: listing.id,
+    title: listing.title,
+    priceText: listing.priceText,
+    url: listing.url,
+    imageUrl: listing.imageUrl
+  };
 }
 
 function getActionLabel(state?: ExtensionState) {
@@ -420,6 +439,7 @@ function createDraftText(draft: RelistDraft) {
     "Zapamiętane ogłoszenie VintedFlow",
     `Tytuł: ${draft.title}`,
     `Cena: ${draft.priceText ?? "uzupełnij ręcznie"}`,
+    draft.description ? `Opis:\n${draft.description}` : "Opis: uzupełnij ręcznie",
     `Link źródłowy: ${draft.url}`,
     draft.imageUrl ? `Miniatura: ${draft.imageUrl}` : "",
     "",
@@ -434,7 +454,86 @@ function createDraftText(draft: RelistDraft) {
 }
 
 function isWidgetPage() {
-  return PROFILE_PATH_PATTERN.test(window.location.pathname) || NEW_LISTING_PATH_PATTERN.test(window.location.pathname);
+  return PROFILE_PATH_PATTERN.test(window.location.pathname) || ITEM_PATH_PATTERN.test(window.location.pathname) || NEW_LISTING_PATH_PATTERN.test(window.location.pathname);
+}
+
+function getWidgetMode() {
+  if (NEW_LISTING_PATH_PATTERN.test(window.location.pathname)) {
+    return "new-listing";
+  }
+
+  if (ITEM_PATH_PATTERN.test(window.location.pathname)) {
+    return "item";
+  }
+
+  return "profile";
+}
+
+function extractCurrentListingDraft(): RelistDraftInput | null {
+  if (!ITEM_PATH_PATTERN.test(window.location.pathname)) {
+    return null;
+  }
+
+  const title = getMetaContent("og:title") ?? normalizeInlineText(document.querySelector("h1")?.textContent) ?? normalizeInlineText(document.title.replace(/\|.*$/g, ""));
+
+  if (!title) {
+    return null;
+  }
+
+  return {
+    sourceListingId: extractListingIdFromPath() ?? window.location.pathname,
+    title,
+    description: extractCurrentListingDescription(),
+    priceText: extractCurrentListingPrice(),
+    url: window.location.href,
+    imageUrl: getMetaContent("og:image") ?? document.querySelector<HTMLImageElement>("img[src*='vinted'], img[src]")?.src
+  };
+}
+
+function extractCurrentListingDescription() {
+  const metaDescription = getMetaContent("description") ?? getMetaContent("og:description");
+  const candidates = [
+    document.querySelector("[data-testid*='description' i]")?.textContent,
+    document.querySelector("[itemprop='description']")?.textContent,
+    metaDescription
+  ];
+
+  return candidates.map(normalizeBlockText).find((text) => text && text.length > 20 && !text.includes("Vinted")) ?? metaDescription;
+}
+
+function extractCurrentListingPrice() {
+  const selectors = [
+    "[data-testid*='price' i]",
+    "[itemprop='price']",
+    "[class*='price' i]"
+  ];
+
+  for (const selector of selectors) {
+    const text = normalizeInlineText(document.querySelector(selector)?.textContent);
+
+    if (text && /(\d+[,.]?\d*)\s*(zł|pln|€|eur|£|gbp)/i.test(text)) {
+      return text;
+    }
+  }
+
+  const bodyMatch = normalizeInlineText(document.body.textContent)?.match(/(\d+[,.]?\d*)\s*(zł|pln|€|eur|£|gbp)/i);
+  return bodyMatch?.[0];
+}
+
+function extractListingIdFromPath() {
+  return window.location.pathname.match(/\/(?:items?|catalog)\/(?<id>\d+)/i)?.groups?.id;
+}
+
+function getMetaContent(property: string) {
+  return document.querySelector<HTMLMetaElement>(`meta[property='${property}'], meta[name='${property}']`)?.content;
+}
+
+function normalizeInlineText(value?: string | null) {
+  return value?.replace(/\s+/g, " ").trim();
+}
+
+function normalizeBlockText(value?: string | null) {
+  return value?.replace(/\n{3,}/g, "\n\n").replace(/[ \t]+/g, " ").trim();
 }
 
 function escapeHtml(value: string) {
