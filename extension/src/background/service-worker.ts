@@ -92,22 +92,14 @@ function isAllowedExternalOrigin(value?: string) {
 async function handleMessage(message: ExtensionMessage): Promise<ExtensionResponse<ExtensionState>> {
   switch (message.type) {
     case "PING": {
-      const state = await updateExtensionState((currentState) => ({
-        ...currentState,
-        sync: {
-          ...currentState.sync,
-          lastHeartbeatAt: new Date().toISOString()
-        }
-      }));
-
       return {
         ok: true,
-        data: state
+        data: await getExtensionStateFast()
       };
     }
 
     case "GET_STATE": {
-      const state = await getExtensionState();
+      const state = await getExtensionStateFast();
 
       if (state.auth && isSessionExpiring(state.auth, 0)) {
         void syncSession();
@@ -541,6 +533,24 @@ async function recoverDueAction() {
   if (new Date(job.scheduledFor).getTime() <= Date.now()) {
     void executeActiveJob(0);
   }
+}
+
+async function getExtensionStateFast() {
+  return Promise.race([
+    getExtensionState(),
+    new Promise<ExtensionState>((resolve) => {
+      setTimeout(() => {
+        resolve({
+          ...DEFAULT_STATE,
+          sync: {
+            ...DEFAULT_STATE.sync,
+            status: "error",
+            error: "Chrome storage odpowiedzial zbyt wolno."
+          }
+        });
+      }, 1200);
+    })
+  ]);
 }
 
 async function syncSession() {

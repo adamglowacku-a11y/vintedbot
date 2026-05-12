@@ -1,4 +1,5 @@
 import type { ExtensionMessage, ExtensionResponse, ExtensionState, ParsedVintedListing } from "@/types/extension";
+import { executeRefreshClick } from "@/content/refresh-executor";
 
 type WidgetScanResult = {
   listings: Array<unknown>;
@@ -16,6 +17,7 @@ type WidgetController = {
 const WIDGET_ID = "vintedflow-page-widget";
 const PROFILE_PATH_PATTERN = /\/(member|members|profile)\//i;
 const DASHBOARD_CONNECT_URL = "https://vintly.live/extension/connect";
+const STATE_STORAGE_KEY = "vintedflow:state";
 
 export function mountVintedFlowWidget(controller: WidgetController) {
   if (document.getElementById(WIDGET_ID)) {
@@ -37,10 +39,11 @@ export function mountVintedFlowWidget(controller: WidgetController) {
   const monitor = root.querySelector<HTMLButtonElement>("[data-vf-monitor]");
   const refresh = root.querySelector<HTMLButtonElement>("[data-vf-refresh-first]");
   const cancel = root.querySelector<HTMLButtonElement>("[data-vf-cancel]");
+  let isRefreshing = false;
 
   launcher?.addEventListener("click", () => {
     panel?.classList.toggle("is-open");
-    void scanAndRefresh(root, controller, "launcher");
+    void runWidgetRefresh(root, controller, "launcher");
   });
 
   close?.addEventListener("click", () => {
@@ -48,7 +51,7 @@ export function mountVintedFlowWidget(controller: WidgetController) {
   });
 
   scan?.addEventListener("click", () => {
-    void scanAndRefresh(root, controller, "manual");
+    void runWidgetRefresh(root, controller, "manual");
   });
 
   sync?.addEventListener("click", () => {
@@ -73,11 +76,16 @@ export function mountVintedFlowWidget(controller: WidgetController) {
 
   window.setInterval(() => {
     updateVisibility(root);
-    void scanAndRefresh(root, controller, "interval");
-  }, 3500);
+    if (!isRefreshing && root.dataset.visible === "true") {
+      isRefreshing = true;
+      void runWidgetRefresh(root, controller, "interval").finally(() => {
+        isRefreshing = false;
+      });
+    }
+  }, 10000);
 
   updateVisibility(root);
-  void scanAndRefresh(root, controller, "initial");
+  void runWidgetRefresh(root, controller, "initial");
 }
 
 function updateVisibility(root: HTMLElement) {
@@ -88,29 +96,40 @@ async function scanAndRefresh(root: HTMLElement, controller: WidgetController, r
   setText(root, "vf-parser", "Skanuję...");
   setText(root, "vf-error", "");
 
-  await wakeExtension(root);
   const scanResult = await Promise.resolve(controller.scanNow());
 
   if (scanResult?.health) {
     setText(root, "vf-listings", String(scanResult.health.listingsFound ?? scanResult.listings.length));
     setText(root, "vf-parser", scanResult.health.status);
+    setText(root, "vf-vinted", "Wykryto");
+    setText(root, "vf-sync", "lokalnie");
+    setText(root, "vf-status", "Lokalnie");
   }
 
   if (reason !== "manual") {
     controller.schedule(`widget-${reason}`);
   }
 
-  await refreshWidgetState(root);
+  return scanResult;
 }
 
-async function refreshWidgetState(root: HTMLElement) {
-  const response = await sendWidgetMessageWithRetry({ type: "GET_STATE" });
+async function runWidgetRefresh(root: HTMLElement, controller: WidgetController, reason: string) {
+  const scanResult = await scanAndRefresh(root, controller, reason);
+  await refreshWidgetState(root, {
+    quiet: Boolean(scanResult?.health)
+  });
+}
+
+async function refreshWidgetState(root: HTMLElement, options: { quiet?: boolean } = {}) {
+  const response = await sendWidgetMessageWithRetry({ type: "GET_STATE" }, 1);
   const state = response.data;
 
   if (!response.ok) {
-    setText(root, "vf-status", "Błąd");
-    setText(root, "vf-sync", "offline");
-    setText(root, "vf-error", response.error ?? "Nie udało się odczytać stanu rozszerzenia.");
+    if (!options.quiet) {
+      setText(root, "vf-status", "Lokalnie");
+      setText(root, "vf-sync", "offline");
+      setText(root, "vf-error", response.error ?? "Nie udało się odczytać stanu rozszerzenia.");
+    }
     return;
   }
 
@@ -123,14 +142,6 @@ async function refreshWidgetState(root: HTMLElement) {
   setText(root, "vf-refreshable", String((state?.parsedListings ?? []).filter((listing) => listing.hasRefreshButton).length));
   setText(root, "vf-monitor-state", state?.automationEnabled ? "Monitoring: ON" : "Monitoring: OFF");
   setText(root, "vf-error", "");
-}
-
-async function wakeExtension(root: HTMLElement) {
-  const response = await sendWidgetMessageWithRetry({ type: "PING" }, 2);
-
-  if (!response.ok) {
-    setText(root, "vf-error", response.error ?? "Service worker rozszerzenia nie odpowiedział.");
-  }
 }
 
 async function syncAndRefresh(root: HTMLElement) {
@@ -154,14 +165,22 @@ async function refreshFirstListing(root: HTMLElement) {
     return;
   }
 
-  await sendActionAndRefresh(
-    root,
-    {
-      type: "REQUEST_REFRESH_LISTING",
-      payload: { listingId: listing.id }
-    },
-    `Kolejkuję: ${listing.title}`
-  );
+  setText(root, "vf-action", `Kolejkuję: ${listing.title}`);
+  const response = await sendWidgetMessageWithRetry({
+    type: "REQUEST_REFRESH_LISTING",
+    payload: { listingId: listing.id }
+  });
+
+  if (!response.ok) {
+    setText(root, "vf-action", `Odświeżam lokalnie: ${listing.title}`);
+    const localResult = await executeRefreshClick(listing.id, getLocalHumanDelay());
+    setText(root, "vf-action", localResult.ok ? `Odświeżono lokalnie: ${listing.title}` : "Błąd odświeżania");
+    setText(root, "vf-error", localResult.ok ? "" : (localResult.error ?? "Nie udało się lokalnie kliknąć odświeżenia."));
+    await refreshWidgetState(root, { quiet: true });
+    return;
+  }
+
+  await refreshWidgetState(root);
 }
 
 async function sendActionAndRefresh(root: HTMLElement, message: ExtensionMessage, pendingText: string) {
@@ -221,6 +240,17 @@ async function sendWidgetMessageWithRetry(message: ExtensionMessage, attempts = 
     await wait(180 + attempt * 320);
   }
 
+  if (message.type === "GET_STATE") {
+    const fallbackState = await readStateFromStorageFallback();
+
+    if (fallbackState) {
+      return {
+        ok: true,
+        data: fallbackState
+      };
+    }
+  }
+
   return lastResponse;
 }
 
@@ -257,6 +287,29 @@ function sendWidgetMessage(message: ExtensionMessage): Promise<ExtensionResponse
 
 function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function getLocalHumanDelay() {
+  return 1600 + Math.floor(Math.random() * 2200);
+}
+
+function readStateFromStorageFallback(): Promise<ExtensionState | null> {
+  return new Promise((resolve) => {
+    try {
+      chrome.storage.local.get(STATE_STORAGE_KEY, (result) => {
+        const runtimeError = chrome.runtime.lastError;
+
+        if (runtimeError) {
+          resolve(null);
+          return;
+        }
+
+        resolve((result[STATE_STORAGE_KEY] as ExtensionState | undefined) ?? null);
+      });
+    } catch {
+      resolve(null);
+    }
+  });
 }
 
 function createWidgetMarkup() {
